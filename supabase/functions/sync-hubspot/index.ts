@@ -27,7 +27,7 @@ serve(async (req) => {
     try {
       console.log('Fetching MSEA contacts list from HubSpot...')
       const hubspotResponse = await fetch(
-        'https://api.hubapi.com/contacts/v1/lists/4959/contacts/all',
+        'https://api.hubapi.com/contactslistseg/v1/lists/4959/contacts/all',
         {
           headers: {
             'Authorization': `Bearer ${HUBSPOT_API_KEY}`,
@@ -101,59 +101,63 @@ serve(async (req) => {
         }
       }
 
-      // Mark non-existing records as inactive
-      const hubspotIds = new Set((hubspotData.contacts || []).map(c => parseInt(c.vid)))
-      const inactiveUpdates = existingProfiles
-        ?.filter(profile => !hubspotIds.has(profile['Record ID']))
-        .map(profile => ({
-          'Record ID': profile['Record ID'],
-          'active': false
-        })) || []
+      // Only mark records as inactive if we successfully got contacts from HubSpot
+      if (hubspotData.contacts && hubspotData.contacts.length > 0) {
+        const hubspotIds = new Set((hubspotData.contacts || []).map(c => parseInt(c.vid)))
+        const inactiveUpdates = existingProfiles
+          ?.filter(profile => !hubspotIds.has(profile['Record ID']))
+          .map(profile => ({
+            'Record ID': profile['Record ID'],
+            'active': false
+          })) || []
 
-      console.log(`Processing ${updates.length} updates, ${inserts.length} inserts, and ${inactiveUpdates.length} inactive updates`)
+        console.log(`Processing ${updates.length} updates, ${inserts.length} inserts, and ${inactiveUpdates.length} inactive updates`)
 
-      // Perform database operations in smaller batches
-      const batchSize = 50
-      const batchOperations = []
+        // Perform database operations in smaller batches
+        const batchSize = 50
+        const batchOperations = []
 
-      // Process updates in batches
-      for (let i = 0; i < updates.length; i += batchSize) {
-        const batch = updates.slice(i, i + batchSize)
-        batchOperations.push(
-          supabase
-            .from('profiles')
-            .upsert(batch)
-        )
-      }
+        // Process updates in batches
+        for (let i = 0; i < updates.length; i += batchSize) {
+          const batch = updates.slice(i, i + batchSize)
+          batchOperations.push(
+            supabase
+              .from('profiles')
+              .upsert(batch)
+          )
+        }
 
-      // Process inserts in batches
-      for (let i = 0; i < inserts.length; i += batchSize) {
-        const batch = inserts.slice(i, i + batchSize)
-        batchOperations.push(
-          supabase
-            .from('profiles')
-            .insert(batch)
-        )
-      }
+        // Process inserts in batches
+        for (let i = 0; i < inserts.length; i += batchSize) {
+          const batch = inserts.slice(i, i + batchSize)
+          batchOperations.push(
+            supabase
+              .from('profiles')
+              .insert(batch)
+          )
+        }
 
-      // Process inactive updates in batches
-      for (let i = 0; i < inactiveUpdates.length; i += batchSize) {
-        const batch = inactiveUpdates.slice(i, i + batchSize)
-        batchOperations.push(
-          supabase
-            .from('profiles')
-            .upsert(batch)
-        )
-      }
+        // Process inactive updates in batches
+        for (let i = 0; i < inactiveUpdates.length; i += batchSize) {
+          const batch = inactiveUpdates.slice(i, i + batchSize)
+          batchOperations.push(
+            supabase
+              .from('profiles')
+              .upsert(batch)
+          )
+        }
 
-      // Execute all batches
-      const results = await Promise.all(batchOperations)
+        // Execute all batches
+        const results = await Promise.all(batchOperations)
 
-      // Check for errors
-      const errors = results.filter(result => result.error)
-      if (errors.length > 0) {
-        console.error('Database operation errors:', errors)
-        throw new Error(`Database operation errors: ${JSON.stringify(errors)}`)
+        // Check for errors
+        const errors = results.filter(result => result.error)
+        if (errors.length > 0) {
+          console.error('Database operation errors:', errors)
+          throw new Error(`Database operation errors: ${JSON.stringify(errors)}`)
+        }
+      } else {
+        console.log('No contacts received from HubSpot, skipping database updates')
       }
 
       console.log('Sync completed successfully')
@@ -163,7 +167,7 @@ serve(async (req) => {
           summary: {
             updated: updatedCount,
             inserted: insertedCount,
-            deactivated: inactiveUpdates.length
+            deactivated: hubspotData.contacts?.length > 0 ? existingProfiles?.length - (updatedCount + insertedCount) : 0
           }
         }),
         {
