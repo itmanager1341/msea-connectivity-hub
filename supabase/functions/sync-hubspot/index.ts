@@ -25,9 +25,9 @@ serve(async (req) => {
     const timeout = setTimeout(() => controller.abort(), 25000) // 25 second timeout
 
     try {
-      console.log('Fetching contacts from HubSpot...')
+      console.log('Fetching MSEA report from HubSpot...')
       const hubspotResponse = await fetch(
-        'https://api.hubapi.com/crm/v3/objects/contacts?limit=100&properties=firstname,lastname,company,email,jobtitle,phone,industry,state,city,membership,bio,linkedin,hs_object_id',
+        'https://api.hubapi.com/reports/v2/reports/4959',
         {
           headers: {
             'Authorization': `Bearer ${HUBSPOT_API_KEY}`,
@@ -45,7 +45,7 @@ serve(async (req) => {
 
       const hubspotData = await hubspotResponse.json()
       clearTimeout(timeout)
-      console.log(`Retrieved ${hubspotData.results?.length || 0} contacts from HubSpot`)
+      console.log(`Retrieved ${hubspotData.results?.length || 0} contacts from HubSpot report`)
 
       // Initialize Supabase client
       const supabaseUrl = Deno.env.get('SUPABASE_URL')!
