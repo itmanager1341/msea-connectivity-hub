@@ -24,7 +24,6 @@ serve(async (req) => {
 
     try {
       console.log('Fetching MSEA contacts list from HubSpot...')
-      // Add property parameters to get all the fields we need
       const propertyParams = [
         'firstname',
         'lastname',
@@ -144,9 +143,17 @@ serve(async (req) => {
       if (hubspotData.contacts && hubspotData.contacts.length > 0) {
         const hubspotIds = new Set((hubspotData.contacts || []).map(c => parseInt(c.vid)))
         
-        // Mark profiles as inactive if they're not in the MSEA members list
+        // Only mark profiles as inactive if they're not in the current HubSpot list
+        // AND they have MSEA or MSEA - Corporate membership
         const inactiveUpdates = existingProfiles
-          ?.filter(profile => !hubspotIds.has(profile['Record ID']))
+          ?.filter(profile => {
+            if (!hubspotIds.has(profile['Record ID'])) {
+              const membership = (profile.Membership || '').toLowerCase()
+              // Only include for deactivation if they have MSEA membership
+              return membership.includes('msea')
+            }
+            return false
+          })
           .map(profile => ({
             'Record ID': profile['Record ID'],
             'active': false
