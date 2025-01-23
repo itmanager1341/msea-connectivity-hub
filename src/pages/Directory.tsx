@@ -14,7 +14,6 @@ const Directory = () => {
   const [viewType, setViewType] = useState<ViewType>("company");
   const { toast } = useToast();
 
-  // Improved query with better error handling and logging
   const { data: profiles, isLoading, error } = useQuery({
     queryKey: ['profiles'],
     queryFn: async () => {
@@ -27,48 +26,45 @@ const Directory = () => {
       
       if (error) {
         console.error('Supabase query error:', error);
-        console.error('Error details:', {
-          message: error.message,
-          details: error.details,
-          hint: error.hint
-        });
-        
-        toast({
-          title: "Error Loading Directory",
-          description: `Failed to load directory data: ${error.message}`,
-          variant: "destructive",
-        });
         throw error;
       }
 
-      if (!data) {
-        console.warn('No data returned from profiles query');
-        return [];
-      }
-
       console.log('Profiles data received:', data);
-      return data;
+      return data || [];
     },
     retry: 1
   });
 
-  // Group companies by membership type with logging
+  // Group companies by membership type with improved membership detection
   const groupedCompanies = profiles?.reduce((acc, profile) => {
     console.log('Processing profile for grouping:', profile);
     
     if (profile["Company Name"] && profile.Membership) {
+      // Convert to lowercase for case-insensitive comparison
       const membership = profile.Membership.toLowerCase();
-      if (!acc[membership]) {
-        acc[membership] = new Set();
+      
+      // Check if it's a corporate member
+      if (membership.includes('msea - corporate')) {
+        if (!acc.corporate) {
+          acc.corporate = new Set();
+        }
+        acc.corporate.add(profile["Company Name"]);
+        console.log(`Added ${profile["Company Name"]} to corporate members`);
       }
-      acc[membership].add(profile["Company Name"]);
-      console.log(`Added company ${profile["Company Name"]} to ${membership} group`);
+      // Check if it's an industry member (has MSEA but not corporate)
+      else if (membership.includes('msea')) {
+        if (!acc.industry) {
+          acc.industry = new Set();
+        }
+        acc.industry.add(profile["Company Name"]);
+        console.log(`Added ${profile["Company Name"]} to industry members`);
+      }
     } else {
       console.warn('Profile missing Company Name or Membership:', profile);
     }
     
     return acc;
-  }, {} as Record<string, Set<string>>);
+  }, { corporate: new Set<string>(), industry: new Set<string>() });
 
   console.log('Final grouped companies:', groupedCompanies);
 
@@ -89,8 +85,6 @@ const Directory = () => {
       </div>
     );
   }
-
-  // ... keep existing code (header/navigation section)
 
   return (
     <div className="min-h-screen bg-[#F7FAFC]">
@@ -218,5 +212,3 @@ const Directory = () => {
     </div>
   );
 };
-
-export default Directory;
