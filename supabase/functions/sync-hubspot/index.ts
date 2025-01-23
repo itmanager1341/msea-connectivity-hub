@@ -24,8 +24,24 @@ serve(async (req) => {
 
     try {
       console.log('Fetching MSEA contacts list from HubSpot...')
+      // Add property parameters to get all the fields we need
+      const propertyParams = [
+        'firstname',
+        'lastname',
+        'email',
+        'company',
+        'phone',
+        'jobtitle',
+        'membership',
+        'industry',
+        'state',
+        'city',
+        'bio',
+        'linkedin'
+      ].map(prop => `property=${prop}`).join('&');
+      
       const hubspotResponse = await fetch(
-        'https://api.hubapi.com/contactslistseg/v1/lists/3190/contacts/all',
+        `https://api.hubapi.com/contactslistseg/v1/lists/3190/contacts/all?${propertyParams}`,
         {
           headers: {
             'Authorization': `Bearer ${HUBSPOT_API_KEY}`,
@@ -80,12 +96,18 @@ serve(async (req) => {
         console.log('Processing contact:', contact.vid)
         const properties = contact.properties
         
+        // Get primary email from identity-profiles
+        const primaryEmail = contact['identity-profiles']?.[0]?.identities?.find(
+          (identity: any) => identity.type === 'EMAIL' && identity['is-primary']
+        )?.value || properties.email?.value
+
         // Handle membership field
         let currentMembership = properties.membership?.value || ''
+        const membershipLower = currentMembership.toLowerCase()
         
-        // Ensure MSEA membership is properly recorded while preserving other memberships
-        if (!currentMembership.includes('MSEA')) {
-          // If they're in this list but don't have MSEA explicitly listed, add it
+        // If they're in the MSEA members list but don't have MSEA explicitly listed,
+        // add it while preserving other memberships
+        if (!membershipLower.includes('msea')) {
           currentMembership = currentMembership ? `${currentMembership}; MSEA` : 'MSEA'
         }
 
@@ -96,13 +118,13 @@ serve(async (req) => {
           'Full Name': `${properties.firstname?.value || ''} ${properties.lastname?.value || ''}`.trim(),
           'Company Name': properties.company?.value,
           'Membership': currentMembership,
-          'Email': properties.email?.value,
+          'Email': primaryEmail,
           'Job Title': properties.jobtitle?.value,
           'Phone Number': properties.phone?.value,
           'Industry': properties.industry?.value,
           'State/Region': properties.state?.value,
           'City': properties.city?.value,
-          'Email Domain': properties.email?.value ? properties.email.value.split('@')[1] : null,
+          'Email Domain': primaryEmail ? primaryEmail.split('@')[1] : null,
           'Bio': properties.bio?.value,
           'LinkedIn': properties.linkedin?.value,
           'active': true  // All contacts in this list are active MSEA members
@@ -122,7 +144,7 @@ serve(async (req) => {
       if (hubspotData.contacts && hubspotData.contacts.length > 0) {
         const hubspotIds = new Set((hubspotData.contacts || []).map(c => parseInt(c.vid)))
         
-        // Mark profiles as inactive only if they're not in the MSEA members list
+        // Mark profiles as inactive if they're not in the MSEA members list
         const inactiveUpdates = existingProfiles
           ?.filter(profile => !hubspotIds.has(profile['Record ID']))
           .map(profile => ({
@@ -135,6 +157,7 @@ serve(async (req) => {
         const batchSize = 50
         const batchOperations = []
 
+        // Process updates
         for (let i = 0; i < updates.length; i += batchSize) {
           const batch = updates.slice(i, i + batchSize)
           batchOperations.push(
@@ -144,6 +167,7 @@ serve(async (req) => {
           )
         }
 
+        // Process inserts
         for (let i = 0; i < inserts.length; i += batchSize) {
           const batch = inserts.slice(i, i + batchSize)
           batchOperations.push(
@@ -153,6 +177,7 @@ serve(async (req) => {
           )
         }
 
+        // Process inactive updates
         for (let i = 0; i < inactiveUpdates.length; i += batchSize) {
           const batch = inactiveUpdates.slice(i, i + batchSize)
           batchOperations.push(
