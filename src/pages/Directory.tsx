@@ -6,27 +6,41 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
 
 type ViewType = "company" | "member";
 
 const Directory = () => {
   const [viewType, setViewType] = useState<ViewType>("company");
+  const { toast } = useToast();
 
-  const { data: profiles, isLoading } = useQuery({
+  const { data: profiles, isLoading, error } = useQuery({
     queryKey: ['profiles'],
     queryFn: async () => {
+      console.log('Fetching profiles from Supabase...');
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .order('"Company Name"', { ascending: true });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching profiles:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load directory data",
+          variant: "destructive",
+        });
+        throw error;
+      }
+
+      console.log('Profiles data received:', data);
       return data;
     }
   });
 
   // Group companies by membership type
   const groupedCompanies = profiles?.reduce((acc, profile) => {
+    console.log('Processing profile:', profile);
     if (profile["Company Name"] && profile.Membership) {
       const membership = profile.Membership.toLowerCase();
       if (!acc[membership]) {
@@ -37,8 +51,24 @@ const Directory = () => {
     return acc;
   }, {} as Record<string, Set<string>>);
 
+  console.log('Grouped companies:', groupedCompanies);
+
   const industryMembers = Array.from(groupedCompanies?.industry || []);
   const corporateMembers = Array.from(groupedCompanies?.corporate || []);
+
+  console.log('Industry members:', industryMembers);
+  console.log('Corporate members:', corporateMembers);
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-[#F7FAFC] flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-red-600 mb-2">Error Loading Directory</h2>
+          <p className="text-gray-600">{error.message}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F7FAFC]">
@@ -94,63 +124,73 @@ const Directory = () => {
           </Select>
         </div>
 
-        {viewType === "company" ? (
+        {isLoading ? (
+          <div className="flex justify-center items-center min-h-[200px]">
+            <p className="text-gray-600">Loading directory...</p>
+          </div>
+        ) : viewType === "company" ? (
           <>
             {/* Industry Members Section */}
             <section className="mb-16">
               <h2 className="text-3xl font-bold text-[#1A365D] mb-8">MORTGAGE COMPANY MEMBERS</h2>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-                {industryMembers.map((company) => (
-                  <div 
-                    key={company}
-                    className="bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 flex items-center justify-center h-24 text-center"
-                  >
-                    <span className="text-lg font-medium text-gray-800">{company}</span>
-                  </div>
-                ))}
-              </div>
+              {industryMembers.length === 0 ? (
+                <p className="text-gray-600">No industry members found</p>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+                  {industryMembers.map((company) => (
+                    <div 
+                      key={company}
+                      className="bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 flex items-center justify-center h-24 text-center"
+                    >
+                      <span className="text-lg font-medium text-gray-800">{company}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </section>
 
             {/* Corporate Members Section */}
             <section>
               <h2 className="text-3xl font-bold text-[#1A365D] mb-8">CORPORATE MEMBERS</h2>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-                {corporateMembers.map((company) => (
-                  <div 
-                    key={company}
-                    className="bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 flex items-center justify-center h-24 text-center"
-                  >
-                    <span className="text-lg font-medium text-gray-800">{company}</span>
-                  </div>
-                ))}
-              </div>
+              {corporateMembers.length === 0 ? (
+                <p className="text-gray-600">No corporate members found</p>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+                  {corporateMembers.map((company) => (
+                    <div 
+                      key={company}
+                      className="bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 flex items-center justify-center h-24 text-center"
+                    >
+                      <span className="text-lg font-medium text-gray-800">{company}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </section>
           </>
         ) : (
           <section>
             <h2 className="text-3xl font-bold text-[#1A365D] mb-8">MEMBER DIRECTORY</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {profiles?.map((profile) => (
-                <div 
-                  key={profile["Record ID"]}
-                  className="bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200"
-                >
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                    {profile["Full Name"]}
-                  </h3>
-                  <p className="text-gray-600 mb-1">{profile["Job Title"]}</p>
-                  <p className="text-gray-600 mb-1">{profile["Company Name"]}</p>
-                  <p className="text-gray-600">{profile["City"]}, {profile["State/Region"]}</p>
-                </div>
-              ))}
-            </div>
+            {!profiles || profiles.length === 0 ? (
+              <p className="text-gray-600">No members found</p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {profiles.map((profile) => (
+                  <div 
+                    key={profile["Record ID"]}
+                    className="bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200"
+                  >
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                      {profile["Full Name"]}
+                    </h3>
+                    <p className="text-gray-600 mb-1">{profile["Job Title"]}</p>
+                    <p className="text-gray-600 mb-1">{profile["Company Name"]}</p>
+                    <p className="text-gray-600">{profile["City"]}, {profile["State/Region"]}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
-        )}
-
-        {isLoading && (
-          <div className="flex justify-center items-center min-h-[200px]">
-            <p className="text-gray-600">Loading directory...</p>
-          </div>
         )}
       </div>
     </div>
