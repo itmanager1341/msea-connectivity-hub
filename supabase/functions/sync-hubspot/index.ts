@@ -27,7 +27,7 @@ serve(async (req) => {
     try {
       console.log('Fetching MSEA contacts list from HubSpot...')
       const hubspotResponse = await fetch(
-        'https://api.hubapi.com/contactslistseg/v1/lists/4959/contacts/all',
+        'https://api.hubapi.com/contactslistseg/v1/lists/3190/contacts/all',
         {
           headers: {
             'Authorization': `Bearer ${HUBSPOT_API_KEY}`,
