@@ -25,9 +25,9 @@ serve(async (req) => {
     const timeout = setTimeout(() => controller.abort(), 25000) // 25 second timeout
 
     try {
-      console.log('Fetching MSEA report from HubSpot...')
+      console.log('Fetching MSEA contacts list from HubSpot...')
       const hubspotResponse = await fetch(
-        'https://api.hubapi.com/reports/v2/reports/4959',
+        'https://api.hubapi.com/contacts/v1/lists/4959/contacts/all',
         {
           headers: {
             'Authorization': `Bearer ${HUBSPOT_API_KEY}`,
@@ -45,7 +45,7 @@ serve(async (req) => {
 
       const hubspotData = await hubspotResponse.json()
       clearTimeout(timeout)
-      console.log(`Retrieved ${hubspotData.results?.length || 0} contacts from HubSpot report`)
+      console.log(`Retrieved ${hubspotData.contacts?.length || 0} contacts from HubSpot list`)
 
       // Initialize Supabase client
       const supabaseUrl = Deno.env.get('SUPABASE_URL')!
@@ -71,27 +71,28 @@ serve(async (req) => {
       let insertedCount = 0
 
       // Process HubSpot data
-      for (const contact of hubspotData.results) {
+      for (const contact of (hubspotData.contacts || [])) {
+        const properties = contact.properties
         const profileData = {
-          'Record ID': parseInt(contact.properties.hs_object_id),
-          'First Name': contact.properties.firstname,
-          'Last Name': contact.properties.lastname,
-          'Full Name': `${contact.properties.firstname || ''} ${contact.properties.lastname || ''}`.trim(),
-          'Company Name': contact.properties.company,
-          'Membership': contact.properties.membership,
-          'Email': contact.properties.email,
-          'Job Title': contact.properties.jobtitle,
-          'Phone Number': contact.properties.phone,
-          'Industry': contact.properties.industry,
-          'State/Region': contact.properties.state,
-          'City': contact.properties.city,
-          'Email Domain': contact.properties.email ? contact.properties.email.split('@')[1] : null,
-          'Bio': contact.properties.bio,
-          'LinkedIn': contact.properties.linkedin,
+          'Record ID': parseInt(contact.vid),
+          'First Name': properties.firstname?.value,
+          'Last Name': properties.lastname?.value,
+          'Full Name': `${properties.firstname?.value || ''} ${properties.lastname?.value || ''}`.trim(),
+          'Company Name': properties.company?.value,
+          'Membership': properties.membership?.value,
+          'Email': properties.email?.value,
+          'Job Title': properties.jobtitle?.value,
+          'Phone Number': properties.phone?.value,
+          'Industry': properties.industry?.value,
+          'State/Region': properties.state?.value,
+          'City': properties.city?.value,
+          'Email Domain': properties.email?.value ? properties.email.value.split('@')[1] : null,
+          'Bio': properties.bio?.value,
+          'LinkedIn': properties.linkedin?.value,
           'active': true
         }
 
-        if (existingProfilesMap.has(parseInt(contact.properties.hs_object_id))) {
+        if (existingProfilesMap.has(parseInt(contact.vid))) {
           updates.push(profileData)
           updatedCount++
         } else {
@@ -101,7 +102,7 @@ serve(async (req) => {
       }
 
       // Mark non-existing records as inactive
-      const hubspotIds = new Set(hubspotData.results.map(r => parseInt(r.properties.hs_object_id)))
+      const hubspotIds = new Set((hubspotData.contacts || []).map(c => parseInt(c.vid)))
       const inactiveUpdates = existingProfiles
         ?.filter(profile => !hubspotIds.has(profile['Record ID']))
         .map(profile => ({
