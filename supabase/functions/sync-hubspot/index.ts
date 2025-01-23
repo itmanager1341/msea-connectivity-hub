@@ -18,14 +18,16 @@ serve(async (req) => {
       throw new Error('HUBSPOT_API_KEY is not set')
     }
 
-    // Fetch HubSpot report data with timeout
-    console.log('Fetching HubSpot report data...')
+    console.log('Starting HubSpot sync process...')
+
+    // Fetch HubSpot contacts data with timeout
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 25000) // 25 second timeout
 
     try {
+      console.log('Fetching contacts from HubSpot...')
       const hubspotResponse = await fetch(
-        'https://api.hubapi.com/reports/v3/reports/4959/results',
+        'https://api.hubapi.com/crm/v3/objects/contacts?limit=100&properties=firstname,lastname,company,email,jobtitle,phone,industry,state,city,membership,bio,linkedin,hs_object_id',
         {
           headers: {
             'Authorization': `Bearer ${HUBSPOT_API_KEY}`,
@@ -36,11 +38,14 @@ serve(async (req) => {
       )
 
       if (!hubspotResponse.ok) {
-        throw new Error(`HubSpot API error: ${hubspotResponse.statusText}`)
+        const errorText = await hubspotResponse.text()
+        console.error('HubSpot API error response:', errorText)
+        throw new Error(`HubSpot API error: ${hubspotResponse.statusText}. Details: ${errorText}`)
       }
 
       const hubspotData = await hubspotResponse.json()
       clearTimeout(timeout)
+      console.log(`Retrieved ${hubspotData.results?.length || 0} contacts from HubSpot`)
 
       // Initialize Supabase client
       const supabaseUrl = Deno.env.get('SUPABASE_URL')!
@@ -66,28 +71,27 @@ serve(async (req) => {
       let insertedCount = 0
 
       // Process HubSpot data
-      for (const record of hubspotData.results) {
+      for (const contact of hubspotData.results) {
         const profileData = {
-          'Record ID': record.id,
-          'First Name': record.firstName,
-          'Last Name': record.lastName,
-          'Full Name': `${record.firstName} ${record.lastName}`.trim(),
-          'Company Name': record.company,
-          'Membership': record.membership,
-          'Email': record.email,
-          'Job Title': record.jobTitle,
-          'Profession - FSI': record.profession,
-          'Phone Number': record.phone,
-          'Industry': record.industry,
-          'State/Region': record.state,
-          'City': record.city,
-          'Email Domain': record.email ? record.email.split('@')[1] : null,
-          'Bio': record.bio,
-          'LinkedIn': record.linkedin,
+          'Record ID': parseInt(contact.properties.hs_object_id),
+          'First Name': contact.properties.firstname,
+          'Last Name': contact.properties.lastname,
+          'Full Name': `${contact.properties.firstname || ''} ${contact.properties.lastname || ''}`.trim(),
+          'Company Name': contact.properties.company,
+          'Membership': contact.properties.membership,
+          'Email': contact.properties.email,
+          'Job Title': contact.properties.jobtitle,
+          'Phone Number': contact.properties.phone,
+          'Industry': contact.properties.industry,
+          'State/Region': contact.properties.state,
+          'City': contact.properties.city,
+          'Email Domain': contact.properties.email ? contact.properties.email.split('@')[1] : null,
+          'Bio': contact.properties.bio,
+          'LinkedIn': contact.properties.linkedin,
           'active': true
         }
 
-        if (existingProfilesMap.has(record.id)) {
+        if (existingProfilesMap.has(parseInt(contact.properties.hs_object_id))) {
           updates.push(profileData)
           updatedCount++
         } else {
@@ -97,13 +101,15 @@ serve(async (req) => {
       }
 
       // Mark non-existing records as inactive
-      const hubspotIds = new Set(hubspotData.results.map(r => r.id))
+      const hubspotIds = new Set(hubspotData.results.map(r => parseInt(r.properties.hs_object_id)))
       const inactiveUpdates = existingProfiles
         ?.filter(profile => !hubspotIds.has(profile['Record ID']))
         .map(profile => ({
           'Record ID': profile['Record ID'],
           'active': false
         })) || []
+
+      console.log(`Processing ${updates.length} updates, ${inserts.length} inserts, and ${inactiveUpdates.length} inactive updates`)
 
       // Perform database operations in smaller batches
       const batchSize = 50
@@ -145,9 +151,11 @@ serve(async (req) => {
       // Check for errors
       const errors = results.filter(result => result.error)
       if (errors.length > 0) {
+        console.error('Database operation errors:', errors)
         throw new Error(`Database operation errors: ${JSON.stringify(errors)}`)
       }
 
+      console.log('Sync completed successfully')
       return new Response(
         JSON.stringify({
           success: true,
@@ -162,8 +170,9 @@ serve(async (req) => {
         }
       )
 
-    } finally {
+    } catch (error) {
       clearTimeout(timeout)
+      throw error // Re-throw to be caught by outer try-catch
     }
 
   } catch (error) {
