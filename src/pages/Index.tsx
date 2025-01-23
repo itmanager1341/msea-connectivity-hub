@@ -1,10 +1,49 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Building2, Users, BookOpen, ArrowRight } from "lucide-react";
+import { Building2, Users, BookOpen, ArrowRight, LogIn } from "lucide-react";
+import { NavigationMenu, NavigationMenuItem, NavigationMenuLink, NavigationMenuList, navigationMenuTriggerStyle } from "@/components/ui/navigation-menu";
+import { Link } from "react-router-dom";
 
 const Index = () => {
   return (
     <div className="min-h-screen bg-[#F7FAFC]">
+      {/* Header/Navigation */}
+      <header className="bg-white border-b">
+        <div className="container mx-auto px-4 flex items-center justify-between h-16">
+          <div className="flex items-center space-x-8">
+            <h1 className="text-xl font-bold text-[#1A365D]">MSEA</h1>
+            <NavigationMenu>
+              <NavigationMenuList>
+                <NavigationMenuItem>
+                  <Link to="/" className={navigationMenuTriggerStyle()}>
+                    Home
+                  </Link>
+                </NavigationMenuItem>
+                <NavigationMenuItem>
+                  <Link to="/about" className={navigationMenuTriggerStyle()}>
+                    About
+                  </Link>
+                </NavigationMenuItem>
+                <NavigationMenuItem>
+                  <Link to="/directory" className={navigationMenuTriggerStyle()}>
+                    Directory
+                  </Link>
+                </NavigationMenuItem>
+                <NavigationMenuItem>
+                  <Link to="/resources" className={navigationMenuTriggerStyle()}>
+                    Resources
+                  </Link>
+                </NavigationMenuItem>
+              </NavigationMenuList>
+            </NavigationMenu>
+          </div>
+          <Button variant="outline" className="flex items-center gap-2">
+            <LogIn className="w-4 h-4" />
+            Member Login
+          </Button>
+        </div>
+      </header>
+
       {/* Hero Section */}
       <section className="bg-[#1A365D] text-white py-20">
         <div className="container mx-auto px-4">
@@ -13,7 +52,7 @@ const Index = () => {
               Mortgage Servicing Executive Alliance
             </h1>
             <p className="text-xl mb-8 text-gray-200">
-              Connecting leaders in mortgage servicing to drive innovation and excellence
+              The premier platform for nurturing the next generation of mortgage leaders
             </p>
             <Button 
               className="bg-[#C4A484] hover:bg-[#B39374] text-white"
@@ -21,6 +60,36 @@ const Index = () => {
             >
               Join MSEA Today
             </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* Mission Statement Section */}
+      <section className="py-16 bg-white">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto text-center">
+            <h2 className="text-3xl font-bold text-[#1A365D] mb-8">Our Mission</h2>
+            <p className="text-lg text-[#4A5568] mb-12 leading-relaxed">
+              Mortgage Servicing Executive Alliance (MSEA) is the premier platform for nurturing the next generation of mortgage leaders. We offer exclusive access to mentorship, collaboration, and professional growth opportunities within a network of industry experts and visionaries.
+              <br /><br />
+              As a cornerstone for innovation and success, MSEA is steadfast in its commitment to shaping a more resilient, adaptive, and forward-thinking mortgage industry.
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              {[
+                "Supportive",
+                "Visionary",
+                "Exclusive",
+                "Collaborative",
+                "Knowledgeable",
+                "Approachable",
+                "Inspirational",
+                "Adaptable",
+              ].map((value) => (
+                <div key={value} className="bg-[#F7FAFC] p-4 rounded-lg">
+                  <p className="font-medium text-[#1A365D]">{value}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -70,7 +139,6 @@ const Index = () => {
             Our Corporate Members
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 items-center justify-items-center">
-            {/* Placeholder for member logos - will be replaced with actual logos */}
             {[1, 2, 3, 4].map((index) => (
               <div
                 key={index}
