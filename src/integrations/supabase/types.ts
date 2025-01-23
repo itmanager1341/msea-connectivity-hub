@@ -86,6 +86,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          active: boolean | null
           Bio: string | null
           City: string | null
           "Company Name": string | null
@@ -106,6 +107,7 @@ export type Database = {
           "State/Region": string | null
         }
         Insert: {
+          active?: boolean | null
           Bio?: string | null
           City?: string | null
           "Company Name"?: string | null
@@ -126,6 +128,7 @@ export type Database = {
           "State/Region"?: string | null
         }
         Update: {
+          active?: boolean | null
           Bio?: string | null
           City?: string | null
           "Company Name"?: string | null

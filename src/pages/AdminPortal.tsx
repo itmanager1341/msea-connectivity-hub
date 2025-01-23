@@ -11,12 +11,15 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search } from "lucide-react";
+import { Search, RefreshCw } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const AdminPortal = () => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [isSyncing, setIsSyncing] = useState(false);
+  const { toast } = useToast();
 
-  const { data: profiles, isLoading } = useQuery({
+  const { data: profiles, isLoading, refetch } = useQuery({
     queryKey: ['admin-profiles'],
     queryFn: async () => {
       console.log('Fetching profiles for admin portal...');
@@ -34,6 +37,35 @@ const AdminPortal = () => {
       return data || [];
     }
   });
+
+  const handleSync = async () => {
+    setIsSyncing(true);
+    try {
+      const response = await supabase.functions.invoke('sync-hubspot');
+      
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Sync failed');
+      }
+
+      const summary = response.data.summary;
+      toast({
+        title: "Sync Completed Successfully",
+        description: `Updated ${summary.updated} records, added ${summary.inserted} new records, and marked ${summary.deactivated} records as inactive.`,
+      });
+
+      // Refresh the profiles list
+      refetch();
+    } catch (error) {
+      console.error('Sync error:', error);
+      toast({
+        title: "Sync Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const filteredProfiles = profiles?.filter(profile => {
     const searchLower = searchTerm.toLowerCase();
@@ -62,7 +94,17 @@ const AdminPortal = () => {
             />
             <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
           </div>
-          <Button>Add Member</Button>
+          <div className="flex gap-4">
+            <Button 
+              onClick={handleSync}
+              disabled={isSyncing}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
+              {isSyncing ? 'Syncing...' : 'Sync with HubSpot'}
+            </Button>
+            <Button>Add Member</Button>
+          </div>
         </div>
 
         {/* Members Table */}
@@ -78,6 +120,7 @@ const AdminPortal = () => {
                   <TableHead>Email</TableHead>
                   <TableHead>Phone</TableHead>
                   <TableHead>Membership</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -91,6 +134,15 @@ const AdminPortal = () => {
                     <TableCell>{profile["Email"]}</TableCell>
                     <TableCell>{profile["Phone Number"]}</TableCell>
                     <TableCell>{profile["Membership"]}</TableCell>
+                    <TableCell>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        profile.active 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {profile.active ? 'Active' : 'Inactive'}
+                      </span>
+                    </TableCell>
                     <TableCell>
                       <Button variant="ghost" size="sm">
                         Edit
