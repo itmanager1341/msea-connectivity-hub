@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 type ViewType = "company" | "member";
 
@@ -14,44 +14,66 @@ const Directory = () => {
   const [viewType, setViewType] = useState<ViewType>("company");
   const { toast } = useToast();
 
+  // Improved query with better error handling and logging
   const { data: profiles, isLoading, error } = useQuery({
     queryKey: ['profiles'],
     queryFn: async () => {
-      console.log('Fetching profiles from Supabase...');
+      console.log('Starting profiles fetch from Supabase...');
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .order('"Company Name"', { ascending: true });
       
       if (error) {
-        console.error('Error fetching profiles:', error);
+        console.error('Supabase query error:', error);
+        console.error('Error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
+        
         toast({
-          title: "Error",
-          description: "Failed to load directory data",
+          title: "Error Loading Directory",
+          description: `Failed to load directory data: ${error.message}`,
           variant: "destructive",
         });
         throw error;
       }
 
+      if (!data) {
+        console.warn('No data returned from profiles query');
+        return [];
+      }
+
       console.log('Profiles data received:', data);
       return data;
+    },
+    retry: 1,
+    onError: (error) => {
+      console.error('Query error:', error);
     }
   });
 
-  // Group companies by membership type
+  // Group companies by membership type with logging
   const groupedCompanies = profiles?.reduce((acc, profile) => {
-    console.log('Processing profile:', profile);
+    console.log('Processing profile for grouping:', profile);
+    
     if (profile["Company Name"] && profile.Membership) {
       const membership = profile.Membership.toLowerCase();
       if (!acc[membership]) {
         acc[membership] = new Set();
       }
       acc[membership].add(profile["Company Name"]);
+      console.log(`Added company ${profile["Company Name"]} to ${membership} group`);
+    } else {
+      console.warn('Profile missing Company Name or Membership:', profile);
     }
+    
     return acc;
   }, {} as Record<string, Set<string>>);
 
-  console.log('Grouped companies:', groupedCompanies);
+  console.log('Final grouped companies:', groupedCompanies);
 
   const industryMembers = Array.from(groupedCompanies?.industry || []);
   const corporateMembers = Array.from(groupedCompanies?.corporate || []);
@@ -60,6 +82,7 @@ const Directory = () => {
   console.log('Corporate members:', corporateMembers);
 
   if (error) {
+    console.error('Rendering error state:', error);
     return (
       <div className="min-h-screen bg-[#F7FAFC] flex items-center justify-center">
         <div className="text-center">
@@ -133,7 +156,7 @@ const Directory = () => {
             {/* Industry Members Section */}
             <section className="mb-16">
               <h2 className="text-3xl font-bold text-[#1A365D] mb-8">MORTGAGE COMPANY MEMBERS</h2>
-              {industryMembers.length === 0 ? (
+              {!industryMembers || industryMembers.length === 0 ? (
                 <p className="text-gray-600">No industry members found</p>
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
@@ -152,7 +175,7 @@ const Directory = () => {
             {/* Corporate Members Section */}
             <section>
               <h2 className="text-3xl font-bold text-[#1A365D] mb-8">CORPORATE MEMBERS</h2>
-              {corporateMembers.length === 0 ? (
+              {!corporateMembers || corporateMembers.length === 0 ? (
                 <p className="text-gray-600">No corporate members found</p>
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
