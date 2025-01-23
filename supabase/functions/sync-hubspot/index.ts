@@ -43,9 +43,20 @@ serve(async (req) => {
         throw new Error(`HubSpot API error: ${hubspotResponse.statusText}. Details: ${errorText}`)
       }
 
-      const hubspotData = await hubspotResponse.json()
+      // Log the raw response for debugging
+      const rawResponse = await hubspotResponse.text()
+      console.log('Raw HubSpot API response:', rawResponse)
+      
+      // Parse the response after logging it
+      const hubspotData = JSON.parse(rawResponse)
+      console.log('Parsed HubSpot data structure:', JSON.stringify(hubspotData, null, 2))
+      console.log('Number of contacts received:', hubspotData.contacts?.length || 0)
+      
+      if (hubspotData.contacts && hubspotData.contacts.length > 0) {
+        console.log('Sample contact data:', JSON.stringify(hubspotData.contacts[0], null, 2))
+      }
+
       clearTimeout(timeout)
-      console.log(`Retrieved ${hubspotData.contacts?.length || 0} contacts from HubSpot list`)
 
       // Initialize Supabase client
       const supabaseUrl = Deno.env.get('SUPABASE_URL')!
@@ -61,6 +72,8 @@ serve(async (req) => {
         throw new Error(`Failed to fetch existing profiles: ${fetchError.message}`)
       }
 
+      console.log('Number of existing profiles:', existingProfiles?.length || 0)
+
       const existingProfilesMap = new Map(
         existingProfiles?.map(profile => [profile['Record ID'], profile]) || []
       )
@@ -72,6 +85,7 @@ serve(async (req) => {
 
       // Process HubSpot data
       for (const contact of (hubspotData.contacts || [])) {
+        console.log('Processing contact:', contact.vid)
         const properties = contact.properties
         const profileData = {
           'Record ID': parseInt(contact.vid),
@@ -100,6 +114,8 @@ serve(async (req) => {
           insertedCount++
         }
       }
+
+      console.log(`Updates prepared: ${updates.length}, Inserts prepared: ${inserts.length}`)
 
       // Only mark records as inactive if we successfully got contacts from HubSpot
       if (hubspotData.contacts && hubspotData.contacts.length > 0) {
