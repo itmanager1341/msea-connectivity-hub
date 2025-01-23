@@ -7,7 +7,6 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
@@ -20,9 +19,8 @@ serve(async (req) => {
 
     console.log('Starting HubSpot sync process...')
 
-    // Fetch HubSpot contacts data with timeout
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 25000) // 25 second timeout
+    const timeout = setTimeout(() => controller.abort(), 25000)
 
     try {
       console.log('Fetching MSEA contacts list from HubSpot...')
@@ -43,13 +41,10 @@ serve(async (req) => {
         throw new Error(`HubSpot API error: ${hubspotResponse.statusText}. Details: ${errorText}`)
       }
 
-      // Log the raw response for debugging
       const rawResponse = await hubspotResponse.text()
       console.log('Raw HubSpot API response:', rawResponse)
       
-      // Parse the response after logging it
       const hubspotData = JSON.parse(rawResponse)
-      console.log('Parsed HubSpot data structure:', JSON.stringify(hubspotData, null, 2))
       console.log('Number of contacts received:', hubspotData.contacts?.length || 0)
       
       if (hubspotData.contacts && hubspotData.contacts.length > 0) {
@@ -58,12 +53,10 @@ serve(async (req) => {
 
       clearTimeout(timeout)
 
-      // Initialize Supabase client
       const supabaseUrl = Deno.env.get('SUPABASE_URL')!
       const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
       const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-      // Get existing profiles
       const { data: existingProfiles, error: fetchError } = await supabase
         .from('profiles')
         .select('*')
@@ -83,17 +76,26 @@ serve(async (req) => {
       let updatedCount = 0
       let insertedCount = 0
 
-      // Process HubSpot data
       for (const contact of (hubspotData.contacts || [])) {
         console.log('Processing contact:', contact.vid)
         const properties = contact.properties
+        
+        // Handle membership field
+        let currentMembership = properties.membership?.value || ''
+        
+        // Ensure MSEA membership is properly recorded while preserving other memberships
+        if (!currentMembership.includes('MSEA')) {
+          // If they're in this list but don't have MSEA explicitly listed, add it
+          currentMembership = currentMembership ? `${currentMembership}; MSEA` : 'MSEA'
+        }
+
         const profileData = {
           'Record ID': parseInt(contact.vid),
           'First Name': properties.firstname?.value,
           'Last Name': properties.lastname?.value,
           'Full Name': `${properties.firstname?.value || ''} ${properties.lastname?.value || ''}`.trim(),
           'Company Name': properties.company?.value,
-          'Membership': properties.membership?.value,
+          'Membership': currentMembership,
           'Email': properties.email?.value,
           'Job Title': properties.jobtitle?.value,
           'Phone Number': properties.phone?.value,
@@ -103,7 +105,7 @@ serve(async (req) => {
           'Email Domain': properties.email?.value ? properties.email.value.split('@')[1] : null,
           'Bio': properties.bio?.value,
           'LinkedIn': properties.linkedin?.value,
-          'active': true
+          'active': true  // All contacts in this list are active MSEA members
         }
 
         if (existingProfilesMap.has(parseInt(contact.vid))) {
@@ -117,9 +119,10 @@ serve(async (req) => {
 
       console.log(`Updates prepared: ${updates.length}, Inserts prepared: ${inserts.length}`)
 
-      // Only mark records as inactive if we successfully got contacts from HubSpot
       if (hubspotData.contacts && hubspotData.contacts.length > 0) {
         const hubspotIds = new Set((hubspotData.contacts || []).map(c => parseInt(c.vid)))
+        
+        // Mark profiles as inactive only if they're not in the MSEA members list
         const inactiveUpdates = existingProfiles
           ?.filter(profile => !hubspotIds.has(profile['Record ID']))
           .map(profile => ({
@@ -129,11 +132,9 @@ serve(async (req) => {
 
         console.log(`Processing ${updates.length} updates, ${inserts.length} inserts, and ${inactiveUpdates.length} inactive updates`)
 
-        // Perform database operations in smaller batches
         const batchSize = 50
         const batchOperations = []
 
-        // Process updates in batches
         for (let i = 0; i < updates.length; i += batchSize) {
           const batch = updates.slice(i, i + batchSize)
           batchOperations.push(
@@ -143,7 +144,6 @@ serve(async (req) => {
           )
         }
 
-        // Process inserts in batches
         for (let i = 0; i < inserts.length; i += batchSize) {
           const batch = inserts.slice(i, i + batchSize)
           batchOperations.push(
@@ -153,7 +153,6 @@ serve(async (req) => {
           )
         }
 
-        // Process inactive updates in batches
         for (let i = 0; i < inactiveUpdates.length; i += batchSize) {
           const batch = inactiveUpdates.slice(i, i + batchSize)
           batchOperations.push(
@@ -163,10 +162,8 @@ serve(async (req) => {
           )
         }
 
-        // Execute all batches
         const results = await Promise.all(batchOperations)
 
-        // Check for errors
         const errors = results.filter(result => result.error)
         if (errors.length > 0) {
           console.error('Database operation errors:', errors)
@@ -193,7 +190,7 @@ serve(async (req) => {
 
     } catch (error) {
       clearTimeout(timeout)
-      throw error // Re-throw to be caught by outer try-catch
+      throw error
     }
 
   } catch (error) {
