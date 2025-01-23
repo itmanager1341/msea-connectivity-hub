@@ -61,10 +61,6 @@ serve(async (req) => {
       
       const hubspotData = JSON.parse(rawResponse)
       console.log('Number of contacts received:', hubspotData.contacts?.length || 0)
-      
-      if (hubspotData.contacts && hubspotData.contacts.length > 0) {
-        console.log('Sample contact data:', JSON.stringify(hubspotData.contacts[0], null, 2))
-      }
 
       clearTimeout(timeout)
 
@@ -91,6 +87,7 @@ serve(async (req) => {
       let updatedCount = 0
       let insertedCount = 0
 
+      // Process all contacts from HubSpot - these are all active MSEA members
       for (const contact of (hubspotData.contacts || [])) {
         console.log('Processing contact:', contact.vid)
         const properties = contact.properties
@@ -100,23 +97,14 @@ serve(async (req) => {
           (identity: any) => identity.type === 'EMAIL' && identity['is-primary']
         )?.value || properties.email?.value
 
-        // Handle membership field
-        let currentMembership = properties.membership?.value || ''
-        const membershipLower = currentMembership.toLowerCase()
-        
-        // If they're in the MSEA members list but don't have MSEA explicitly listed,
-        // add it while preserving other memberships
-        if (!membershipLower.includes('msea')) {
-          currentMembership = currentMembership ? `${currentMembership}; MSEA` : 'MSEA'
-        }
-
+        // All contacts in this list should be marked as MSEA members
         const profileData = {
           'Record ID': parseInt(contact.vid),
           'First Name': properties.firstname?.value,
           'Last Name': properties.lastname?.value,
           'Full Name': `${properties.firstname?.value || ''} ${properties.lastname?.value || ''}`.trim(),
           'Company Name': properties.company?.value,
-          'Membership': currentMembership,
+          'Membership': 'MSEA', // Set base membership as MSEA
           'Email': primaryEmail,
           'Job Title': properties.jobtitle?.value,
           'Phone Number': properties.phone?.value,
@@ -130,6 +118,15 @@ serve(async (req) => {
         }
 
         if (existingProfilesMap.has(parseInt(contact.vid))) {
+          const existingProfile = existingProfilesMap.get(parseInt(contact.vid))
+          // Preserve existing memberships while ensuring MSEA is included
+          if (existingProfile?.Membership) {
+            const existingMemberships = existingProfile.Membership.split(';').map(m => m.trim())
+            if (!existingMemberships.some(m => m.toLowerCase() === 'msea')) {
+              existingMemberships.push('MSEA')
+            }
+            profileData.Membership = existingMemberships.join('; ')
+          }
           updates.push(profileData)
           updatedCount++
         } else {
@@ -144,13 +141,10 @@ serve(async (req) => {
         const hubspotIds = new Set((hubspotData.contacts || []).map(c => parseInt(c.vid)))
         
         // Only mark profiles as inactive if they're not in the current HubSpot list
-        // AND they have MSEA or MSEA - Corporate membership
         const inactiveUpdates = existingProfiles
           ?.filter(profile => {
-            if (!hubspotIds.has(profile['Record ID'])) {
-              const membership = (profile.Membership || '').toLowerCase()
-              // Only include for deactivation if they have MSEA membership
-              return membership.includes('msea')
+            if (!hubspotIds.has(profile['Record ID']) && profile.active) {
+              return true // If they're not in HubSpot list and currently active, mark inactive
             }
             return false
           })
