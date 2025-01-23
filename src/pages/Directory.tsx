@@ -49,10 +49,7 @@ const Directory = () => {
       console.log('Profiles data received:', data);
       return data;
     },
-    retry: 1,
-    onError: (error) => {
-      console.error('Query error:', error);
-    }
+    retry: 1
   });
 
   // Group companies by membership type with logging
@@ -92,6 +89,8 @@ const Directory = () => {
       </div>
     );
   }
+
+  // ... keep existing code (header/navigation section)
 
   return (
     <div className="min-h-screen bg-[#F7FAFC]">
