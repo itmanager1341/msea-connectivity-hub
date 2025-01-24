@@ -37,18 +37,22 @@ const ProfilePage = () => {
     },
   });
 
-  // Fetch visibility settings
+  // Fetch visibility settings using the profile's email as the identifier
   const { data: visibility } = useQuery({
     queryKey: ["visibility"],
     queryFn: async () => {
+      if (!profile?.Email) return null;
+      
       const { data, error } = await supabase
         .from("profile_visibility")
         .select("*")
-        .single();
+        .eq("profile_id", profile.Email)
+        .maybeSingle();
 
       if (error) throw error;
       return data;
     },
+    enabled: !!profile?.Email,
   });
 
   const handleInputChange = (field: string, value: string) => {
@@ -83,12 +87,15 @@ const ProfilePage = () => {
 
   const handleVisibilityChange = async (field: string) => {
     try {
+      if (!profile?.Email) return;
+
       const { error } = await supabase
         .from("profile_visibility")
-        .update({
+        .upsert({
+          profile_id: profile.Email,
           [field]: !visibility?.[field],
         })
-        .eq("profile_id", profile?.["Record ID"]);
+        .eq("profile_id", profile.Email);
 
       if (error) throw error;
 
