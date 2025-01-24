@@ -42,22 +42,26 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <Router>
         <Routes>
+          {/* Public routes */}
           <Route path="/" element={<Index />} />
           <Route path="/about" element={<About />} />
           <Route path="/directory" element={<Directory />} />
           <Route path="/resources" element={<Resources />} />
-          <Route path="/login" element={!session ? <Auth /> : <Navigate to="/portal" replace />} />
+          
+          {/* Auth routes */}
+          <Route 
+            path="/login" 
+            element={session ? <Navigate to="/portal" replace /> : <Auth />} 
+          />
+          
+          {/* Protected routes */}
           <Route
             path="/admin"
-            element={
-              session ? <AdminPortal /> : <Navigate to="/login" replace />
-            }
+            element={session ? <AdminPortal /> : <Navigate to="/login" replace />}
           />
           <Route
             path="/portal/*"
-            element={
-              session ? <MemberPortal /> : <Navigate to="/login" replace />
-            }
+            element={session ? <MemberPortal /> : <Navigate to="/login" replace />}
           />
         </Routes>
       </Router>
