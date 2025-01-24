@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { LogOut, Home, Users, FileText, Mail, MessageSquare, HelpCircle, User } from "lucide-react";
 import {
   Sidebar,
@@ -29,8 +29,13 @@ const navigationItems: NavItem[] = [
 ];
 
 export const PortalNavigation = () => {
-  const [activeItem, setActiveItem] = useState("Dashboard");
+  const location = useLocation();
   const navigate = useNavigate();
+  const [activeItem, setActiveItem] = useState(() => {
+    const currentPath = location.pathname;
+    const matchingItem = navigationItems.find(item => currentPath.startsWith(item.href));
+    return matchingItem?.label || "Dashboard";
+  });
 
   const handleLogout = async () => {
     // TODO: Implement logout logic
