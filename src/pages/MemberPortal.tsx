@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Home, Users, FileText, Mail, MessageSquare, HelpCircle, User } from "lucide-react";
+import { LogOut, Home, Users, FileText, Mail, MessageSquare, HelpCircle, User, LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type SidebarItem = {
-  icon: React.ComponentType;
+  icon: LucideIcon;  // Changed from React.ComponentType to LucideIcon
   label: string;
   href: string;
 };
