@@ -19,10 +19,12 @@ serve(async (req) => {
 
     console.log('Starting HubSpot sync process...')
 
+    // Set up timeout for the HubSpot API request
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 25000)
 
     try {
+      // Fetch contacts from MSEA members list (ID: 3190)
       console.log('Fetching MSEA contacts list from HubSpot...')
       const propertyParams = [
         'firstname',
@@ -56,18 +58,17 @@ serve(async (req) => {
         throw new Error(`HubSpot API error: ${hubspotResponse.statusText}. Details: ${errorText}`)
       }
 
-      const rawResponse = await hubspotResponse.text()
-      console.log('Raw HubSpot API response:', rawResponse)
-      
-      const hubspotData = JSON.parse(rawResponse)
+      const hubspotData = await hubspotResponse.json()
       console.log('Number of contacts received:', hubspotData.contacts?.length || 0)
 
       clearTimeout(timeout)
 
+      // Initialize Supabase client
       const supabaseUrl = Deno.env.get('SUPABASE_URL')!
       const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
       const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
+      // Get existing profiles from Supabase
       const { data: existingProfiles, error: fetchError } = await supabase
         .from('profiles')
         .select('*')
@@ -78,6 +79,7 @@ serve(async (req) => {
 
       console.log('Number of existing profiles:', existingProfiles?.length || 0)
 
+      // Create a map of existing profiles for quick lookup
       const existingProfilesMap = new Map(
         existingProfiles?.map(profile => [profile['Record ID'], profile]) || []
       )
@@ -87,24 +89,24 @@ serve(async (req) => {
       let updatedCount = 0
       let insertedCount = 0
 
-      // Process all contacts from HubSpot - these are all active MSEA members
+      // Process all contacts from HubSpot MSEA members list
       for (const contact of (hubspotData.contacts || [])) {
         console.log('Processing contact:', contact.vid)
         const properties = contact.properties
         
-        // Get primary email from identity-profiles
+        // Get primary email
         const primaryEmail = contact['identity-profiles']?.[0]?.identities?.find(
           (identity: any) => identity.type === 'EMAIL' && identity['is-primary']
         )?.value || properties.email?.value
 
-        // All contacts in this list should be marked as MSEA members
+        // Prepare profile data
         const profileData = {
           'Record ID': parseInt(contact.vid),
           'First Name': properties.firstname?.value,
           'Last Name': properties.lastname?.value,
           'Full Name': `${properties.firstname?.value || ''} ${properties.lastname?.value || ''}`.trim(),
           'Company Name': properties.company?.value,
-          'Membership': 'MSEA', // Set base membership as MSEA
+          'Membership': properties.membership?.value,
           'Email': primaryEmail,
           'Job Title': properties.jobtitle?.value,
           'Phone Number': properties.phone?.value,
@@ -114,19 +116,11 @@ serve(async (req) => {
           'Email Domain': primaryEmail ? primaryEmail.split('@')[1] : null,
           'Bio': properties.bio?.value,
           'LinkedIn': properties.linkedin?.value,
-          'active': true  // All contacts in this list are active MSEA members
+          'active': true  // All contacts in MSEA list are active
         }
 
+        // Update or insert based on whether the profile exists
         if (existingProfilesMap.has(parseInt(contact.vid))) {
-          const existingProfile = existingProfilesMap.get(parseInt(contact.vid))
-          // Preserve existing memberships while ensuring MSEA is included
-          if (existingProfile?.Membership) {
-            const existingMemberships = existingProfile.Membership.split(';').map(m => m.trim())
-            if (!existingMemberships.some(m => m.toLowerCase() === 'msea')) {
-              existingMemberships.push('MSEA')
-            }
-            profileData.Membership = existingMemberships.join('; ')
-          }
           updates.push(profileData)
           updatedCount++
         } else {
@@ -137,66 +131,63 @@ serve(async (req) => {
 
       console.log(`Updates prepared: ${updates.length}, Inserts prepared: ${inserts.length}`)
 
-      if (hubspotData.contacts && hubspotData.contacts.length > 0) {
-        const hubspotIds = new Set((hubspotData.contacts || []).map(c => parseInt(c.vid)))
-        
-        // Only mark profiles as inactive if they're not in the current HubSpot list
-        const inactiveUpdates = existingProfiles
-          ?.filter(profile => {
-            if (!hubspotIds.has(profile['Record ID']) && profile.active) {
-              return true // If they're not in HubSpot list and currently active, mark inactive
-            }
-            return false
-          })
-          .map(profile => ({
-            'Record ID': profile['Record ID'],
-            'active': false
-          })) || []
+      // Create a set of current HubSpot contact IDs for marking inactive profiles
+      const currentHubspotIds = new Set(hubspotData.contacts?.map(c => parseInt(c.vid)) || [])
+      
+      // Find profiles to mark as inactive (those not in current HubSpot list)
+      const inactiveUpdates = existingProfiles
+        ?.filter(profile => {
+          return !currentHubspotIds.has(profile['Record ID']) && profile.active
+        })
+        .map(profile => ({
+          'Record ID': profile['Record ID'],
+          'active': false
+        })) || []
 
-        console.log(`Processing ${updates.length} updates, ${inserts.length} inserts, and ${inactiveUpdates.length} inactive updates`)
+      console.log(`Processing ${updates.length} updates, ${inserts.length} inserts, and ${inactiveUpdates.length} inactive updates`)
 
-        const batchSize = 50
-        const batchOperations = []
+      // Process database operations in batches
+      const batchSize = 50
+      const batchOperations = []
 
-        // Process updates
-        for (let i = 0; i < updates.length; i += batchSize) {
-          const batch = updates.slice(i, i + batchSize)
-          batchOperations.push(
-            supabase
-              .from('profiles')
-              .upsert(batch)
-          )
-        }
+      // Process updates
+      for (let i = 0; i < updates.length; i += batchSize) {
+        const batch = updates.slice(i, i + batchSize)
+        batchOperations.push(
+          supabase
+            .from('profiles')
+            .upsert(batch)
+        )
+      }
 
-        // Process inserts
-        for (let i = 0; i < inserts.length; i += batchSize) {
-          const batch = inserts.slice(i, i + batchSize)
-          batchOperations.push(
-            supabase
-              .from('profiles')
-              .insert(batch)
-          )
-        }
+      // Process inserts
+      for (let i = 0; i < inserts.length; i += batchSize) {
+        const batch = inserts.slice(i, i + batchSize)
+        batchOperations.push(
+          supabase
+            .from('profiles')
+            .insert(batch)
+        )
+      }
 
-        // Process inactive updates
-        for (let i = 0; i < inactiveUpdates.length; i += batchSize) {
-          const batch = inactiveUpdates.slice(i, i + batchSize)
-          batchOperations.push(
-            supabase
-              .from('profiles')
-              .upsert(batch)
-          )
-        }
+      // Process inactive updates
+      for (let i = 0; i < inactiveUpdates.length; i += batchSize) {
+        const batch = inactiveUpdates.slice(i, i + batchSize)
+        batchOperations.push(
+          supabase
+            .from('profiles')
+            .upsert(batch)
+        )
+      }
 
-        const results = await Promise.all(batchOperations)
+      // Execute all database operations
+      const results = await Promise.all(batchOperations)
 
-        const errors = results.filter(result => result.error)
-        if (errors.length > 0) {
-          console.error('Database operation errors:', errors)
-          throw new Error(`Database operation errors: ${JSON.stringify(errors)}`)
-        }
-      } else {
-        console.log('No contacts received from HubSpot, skipping database updates')
+      // Check for errors
+      const errors = results.filter(result => result.error)
+      if (errors.length > 0) {
+        console.error('Database operation errors:', errors)
+        throw new Error(`Database operation errors: ${JSON.stringify(errors)}`)
       }
 
       console.log('Sync completed successfully')
@@ -206,7 +197,7 @@ serve(async (req) => {
           summary: {
             updated: updatedCount,
             inserted: insertedCount,
-            deactivated: hubspotData.contacts?.length > 0 ? existingProfiles?.length - (updatedCount + insertedCount) : 0
+            deactivated: inactiveUpdates.length
           }
         }),
         {
