@@ -16,6 +16,7 @@ const queryClient = new QueryClient();
 function App() {
   const [session, setSession] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showAuth, setShowAuth] = useState(false);
 
   useEffect(() => {
     // Check active session
@@ -29,6 +30,9 @@ function App() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      if (session) {
+        setShowAuth(false); // Hide auth modal when user is logged in
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -46,20 +50,40 @@ function App() {
           <Route path="/about" element={<About />} />
           <Route path="/directory" element={<Directory />} />
           <Route path="/resources" element={<Resources />} />
-          <Route path="/auth" element={<Auth />} />
           <Route
             path="/admin"
             element={
-              session ? <AdminPortal /> : <Navigate to="/auth" replace />
+              session ? (
+                <AdminPortal />
+              ) : (
+                <>
+                  {setShowAuth(true)}
+                  <Navigate to="/" replace />
+                </>
+              )
             }
           />
           <Route
             path="/portal/*"
             element={
-              session ? <MemberPortal /> : <Navigate to="/auth" replace />
+              session ? (
+                <MemberPortal />
+              ) : (
+                <>
+                  {setShowAuth(true)}
+                  <Navigate to="/" replace />
+                </>
+              )
             }
           />
         </Routes>
+        {showAuth && !session && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-background rounded-lg w-full max-w-md mx-4">
+              <Auth onClose={() => setShowAuth(false)} />
+            </div>
+          </div>
+        )}
       </Router>
       <Toaster />
     </QueryClientProvider>
