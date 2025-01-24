@@ -44,7 +44,7 @@ const MemberPortal = () => {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen bg-[#F7FAFC]">
+      <div className="min-h-screen w-full bg-[#F7FAFC]">
         {/* Header */}
         <header className="bg-white border-b border-gray-200 px-4 h-16 flex items-center justify-between fixed w-full top-0 z-50">
           <div className="flex items-center gap-8">
@@ -84,8 +84,8 @@ const MemberPortal = () => {
         </header>
 
         <div className="flex w-full pt-16">
-          {/* Left Sidebar using shadcn Sidebar */}
-          <Sidebar className="w-[200px]">
+          {/* Left Sidebar */}
+          <Sidebar className="w-[200px] shrink-0">
             <SidebarHeader className="h-16 flex items-center px-4">
               <h2 className="text-sm font-semibold">Navigation</h2>
             </SidebarHeader>
@@ -125,7 +125,7 @@ const MemberPortal = () => {
           </Sidebar>
 
           {/* Main Content Area */}
-          <main className="flex-1 p-8 min-w-0">
+          <main className="flex-1 p-8">
             <div className="max-w-[1600px] mx-auto">
               <h2 className="text-2xl font-bold text-gray-900 mb-6">{activeItem}</h2>
               <div className="bg-white rounded-lg shadow p-6">
@@ -135,7 +135,7 @@ const MemberPortal = () => {
           </main>
 
           {/* Right Sidebar */}
-          <aside className="hidden lg:block w-[280px] bg-white border-l border-gray-200 p-4">
+          <aside className="hidden lg:block w-[280px] shrink-0 bg-white border-l border-gray-200 p-4">
             <div className="mb-6">
               <h3 className="text-sm font-semibold text-gray-500 uppercase">Messages</h3>
               <div className="mt-4 space-y-4">
