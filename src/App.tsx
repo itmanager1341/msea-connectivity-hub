@@ -16,7 +16,6 @@ const queryClient = new QueryClient();
 function App() {
   const [session, setSession] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [showAuth, setShowAuth] = useState(false);
 
   useEffect(() => {
     // Check active session
@@ -30,9 +29,6 @@ function App() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      if (session) {
-        setShowAuth(false);
-      }
     });
 
     return () => subscription.unsubscribe();
@@ -46,20 +42,21 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <Router>
         <Routes>
-          <Route path="/" element={<Index showAuth={showAuth} setShowAuth={setShowAuth} />} />
+          <Route path="/" element={<Index />} />
           <Route path="/about" element={<About />} />
           <Route path="/directory" element={<Directory />} />
           <Route path="/resources" element={<Resources />} />
+          <Route path="/login" element={!session ? <Auth /> : <Navigate to="/portal" replace />} />
           <Route
             path="/admin"
             element={
-              session ? <AdminPortal /> : <Navigate to="/" replace />
+              session ? <AdminPortal /> : <Navigate to="/login" replace />
             }
           />
           <Route
             path="/portal/*"
             element={
-              session ? <MemberPortal /> : <Navigate to="/" replace />
+              session ? <MemberPortal /> : <Navigate to="/login" replace />
             }
           />
         </Routes>
