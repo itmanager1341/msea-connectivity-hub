@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { LogOut, Home, Users, FileText, Mail, MessageSquare, HelpCircle, User, Search, Bell, PanelLeft } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { LogOut, Home, Users, FileText, Mail, MessageSquare, HelpCircle, User, Search, Bell } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -86,7 +85,7 @@ const MemberPortal = () => {
 
         <div className="flex w-full pt-16">
           {/* Left Sidebar using shadcn Sidebar */}
-          <Sidebar className="w-[240px]">
+          <Sidebar className="w-[200px]">
             <SidebarHeader className="h-16 flex items-center px-4">
               <h2 className="text-sm font-semibold">Navigation</h2>
             </SidebarHeader>
@@ -127,7 +126,7 @@ const MemberPortal = () => {
 
           {/* Main Content Area */}
           <main className="flex-1 p-8 min-w-0">
-            <div className="max-w-[1200px] mx-auto">
+            <div className="max-w-[1600px] mx-auto">
               <h2 className="text-2xl font-bold text-gray-900 mb-6">{activeItem}</h2>
               <div className="bg-white rounded-lg shadow p-6">
                 <p className="text-gray-600">Welcome to your member portal!</p>
@@ -136,25 +135,66 @@ const MemberPortal = () => {
           </main>
 
           {/* Right Sidebar */}
-          <aside className="hidden lg:block w-64 bg-white border-l border-gray-200 p-4">
+          <aside className="hidden lg:block w-[280px] bg-white border-l border-gray-200 p-4">
             <div className="mb-6">
               <h3 className="text-sm font-semibold text-gray-500 uppercase">Messages</h3>
               <div className="mt-4 space-y-4">
-                <p className="text-sm text-gray-600">No new messages</p>
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback>JD</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="text-sm font-medium">John Doe</p>
+                    <p className="text-xs text-gray-500">New message about the project...</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback>AS</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="text-sm font-medium">Alice Smith</p>
+                    <p className="text-xs text-gray-500">Updated the meeting schedule...</p>
+                  </div>
+                </div>
               </div>
             </div>
 
             <div className="mb-6">
               <h3 className="text-sm font-semibold text-gray-500 uppercase">Recent Connections</h3>
               <div className="mt-4 space-y-4">
-                <p className="text-sm text-gray-600">No recent connections</p>
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback>RJ</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="text-sm font-medium">Robert Johnson</p>
+                    <p className="text-xs text-gray-500">Senior Developer</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback>MP</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="text-sm font-medium">Maria Parker</p>
+                    <p className="text-xs text-gray-500">Product Manager</p>
+                  </div>
+                </div>
               </div>
             </div>
 
             <div>
               <h3 className="text-sm font-semibold text-gray-500 uppercase">Upcoming Events</h3>
               <div className="mt-4 space-y-4">
-                <p className="text-sm text-gray-600">No upcoming events</p>
+                <div className="rounded-md border p-3">
+                  <p className="text-sm font-medium">Team Meeting</p>
+                  <p className="text-xs text-gray-500">Tomorrow at 10:00 AM</p>
+                </div>
+                <div className="rounded-md border p-3">
+                  <p className="text-sm font-medium">Project Review</p>
+                  <p className="text-xs text-gray-500">Friday at 2:00 PM</p>
+                </div>
               </div>
             </div>
           </aside>
