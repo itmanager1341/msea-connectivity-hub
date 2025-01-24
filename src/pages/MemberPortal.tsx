@@ -86,7 +86,7 @@ const MemberPortal = () => {
 
         <div className="flex w-full pt-16">
           {/* Left Sidebar using shadcn Sidebar */}
-          <Sidebar>
+          <Sidebar className="w-[240px]">
             <SidebarHeader className="h-16 flex items-center px-4">
               <h2 className="text-sm font-semibold">Navigation</h2>
             </SidebarHeader>
@@ -126,8 +126,8 @@ const MemberPortal = () => {
           </Sidebar>
 
           {/* Main Content Area */}
-          <main className="flex-1 p-8">
-            <div className="max-w-4xl mx-auto">
+          <main className="flex-1 p-8 min-w-0">
+            <div className="max-w-[1200px] mx-auto">
               <h2 className="text-2xl font-bold text-gray-900 mb-6">{activeItem}</h2>
               <div className="bg-white rounded-lg shadow p-6">
                 <p className="text-gray-600">Welcome to your member portal!</p>
@@ -136,7 +136,7 @@ const MemberPortal = () => {
           </main>
 
           {/* Right Sidebar */}
-          <aside className="hidden lg:block w-80 bg-white border-l border-gray-200 p-4">
+          <aside className="hidden lg:block w-64 bg-white border-l border-gray-200 p-4">
             <div className="mb-6">
               <h3 className="text-sm font-semibold text-gray-500 uppercase">Messages</h3>
               <div className="mt-4 space-y-4">
