@@ -31,7 +31,7 @@ function App() {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       if (session) {
-        setShowAuth(false); // Hide auth modal when user is logged in
+        setShowAuth(false);
       }
     });
 
@@ -39,45 +39,30 @@ function App() {
   }, []);
 
   if (isLoading) {
-    return null; // Or a loading spinner
+    return null;
   }
 
   return (
     <QueryClientProvider client={queryClient}>
       <Router>
         <Routes>
-          <Route path="/" element={<Index />} />
+          <Route path="/" element={<Index showAuth={showAuth} setShowAuth={setShowAuth} />} />
           <Route path="/about" element={<About />} />
           <Route path="/directory" element={<Directory />} />
           <Route path="/resources" element={<Resources />} />
           <Route
             path="/admin"
             element={
-              session ? (
-                <AdminPortal />
-              ) : (
-                <Navigate to="/" replace />
-              )
+              session ? <AdminPortal /> : <Navigate to="/" replace />
             }
           />
           <Route
             path="/portal/*"
             element={
-              session ? (
-                <MemberPortal />
-              ) : (
-                <Navigate to="/" replace />
-              )
+              session ? <MemberPortal /> : <Navigate to="/" replace />
             }
           />
         </Routes>
-        {showAuth && !session && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-background rounded-lg w-full max-w-md mx-4">
-              <Auth onClose={() => setShowAuth(false)} />
-            </div>
-          </div>
-        )}
       </Router>
       <Toaster />
     </QueryClientProvider>

@@ -1,10 +1,14 @@
 import { Link } from "react-router-dom";
-import { useState, useEffect } from "react";
 import Auth from "./Auth";
 import { supabase } from "@/integrations/supabase/client";
+import { useEffect, useState } from "react";
 
-const Index = () => {
-  const [showAuth, setShowAuth] = useState(false);
+interface IndexProps {
+  showAuth: boolean;
+  setShowAuth: (show: boolean) => void;
+}
+
+const Index = ({ showAuth, setShowAuth }: IndexProps) => {
   const [session, setSession] = useState<any>(null);
 
   useEffect(() => {
@@ -18,9 +22,6 @@ const Index = () => {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      if (session) {
-        setShowAuth(false);
-      }
     });
 
     // Cleanup subscription on unmount
