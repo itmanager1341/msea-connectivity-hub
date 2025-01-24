@@ -6,6 +6,7 @@ import About from "./pages/About";
 import Directory from "./pages/Directory";
 import Resources from "./pages/Resources";
 import AdminPortal from "./pages/AdminPortal";
+import MemberPortal from "./pages/MemberPortal";
 
 const queryClient = new QueryClient();
 
@@ -19,6 +20,7 @@ function App() {
           <Route path="/directory" element={<Directory />} />
           <Route path="/resources" element={<Resources />} />
           <Route path="/admin" element={<AdminPortal />} />
+          <Route path="/portal/*" element={<MemberPortal />} />
         </Routes>
       </Router>
       <Toaster />
