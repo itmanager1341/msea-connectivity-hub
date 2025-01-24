@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { LogOut, Home, Users, FileText, Mail, MessageSquare, HelpCircle, User, Search, Bell } from "lucide-react";
+import { LogOut, Home, Users, FileText, Mail, MessageSquare, HelpCircle, User, Search, Bell, PanelLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Sidebar,
@@ -12,6 +12,7 @@ import {
   SidebarMenuItem,
   SidebarProvider,
   SidebarTrigger,
+  SidebarRail,
 } from "@/components/ui/sidebar";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -47,7 +48,10 @@ const MemberPortal = () => {
       {/* Header */}
       <header className="bg-white border-b border-gray-200 px-4 h-16 flex items-center justify-between fixed w-full top-0 z-50">
         <div className="flex items-center gap-8">
-          <h1 className="text-xl font-bold text-[#1A365D]">MSEA Portal</h1>
+          <div className="flex items-center gap-4">
+            <SidebarTrigger />
+            <h1 className="text-xl font-bold text-[#1A365D]">MSEA Portal</h1>
+          </div>
           <Link 
             to="/" 
             className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
@@ -84,7 +88,7 @@ const MemberPortal = () => {
           {/* Left Sidebar using shadcn Sidebar */}
           <Sidebar>
             <SidebarHeader className="h-16 flex items-center px-4">
-              <SidebarTrigger />
+              <h2 className="text-sm font-semibold">Navigation</h2>
             </SidebarHeader>
             <SidebarContent>
               <SidebarMenu>
@@ -118,6 +122,7 @@ const MemberPortal = () => {
                 </SidebarMenuItem>
               </SidebarMenu>
             </SidebarFooter>
+            <SidebarRail />
           </Sidebar>
 
           {/* Main Content Area */}
