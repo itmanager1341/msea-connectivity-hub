@@ -24,42 +24,62 @@ serve(async (req) => {
     const timeout = setTimeout(() => controller.abort(), 25000)
 
     try {
-      // Fetch contacts from MSEA members list (ID: 3190)
-      console.log('Fetching MSEA contacts list from HubSpot...')
-      const propertyParams = [
-        'firstname',
-        'lastname',
-        'email',
-        'company',
-        'phone',
-        'jobtitle',
-        'membership',
-        'industry',
-        'state',
-        'city',
-        'bio',
-        'linkedin'
-      ].map(prop => `property=${prop}`).join('&');
-      
-      const hubspotResponse = await fetch(
-        `https://api.hubapi.com/contactslistseg/v1/lists/3190/contacts/all?${propertyParams}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${HUBSPOT_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          signal: controller.signal
-        }
-      )
+      const allContacts = []
+      let hasMore = true
+      let offset = 0
+      const count = 100 // Increased page size for efficiency
 
-      if (!hubspotResponse.ok) {
-        const errorText = await hubspotResponse.text()
-        console.error('HubSpot API error response:', errorText)
-        throw new Error(`HubSpot API error: ${hubspotResponse.statusText}. Details: ${errorText}`)
+      // Fetch all contacts with pagination
+      while (hasMore) {
+        console.log(`Fetching contacts page with offset ${offset}...`)
+        const propertyParams = [
+          'firstname',
+          'lastname',
+          'email',
+          'company',
+          'phone',
+          'jobtitle',
+          'membership',
+          'industry',
+          'state',
+          'city',
+          'bio',
+          'linkedin'
+        ].map(prop => `property=${prop}`).join('&');
+        
+        const hubspotResponse = await fetch(
+          `https://api.hubapi.com/contactslistseg/v1/lists/3190/contacts/all?${propertyParams}&count=${count}&vidOffset=${offset}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${HUBSPOT_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            signal: controller.signal
+          }
+        )
+
+        if (!hubspotResponse.ok) {
+          const errorText = await hubspotResponse.text()
+          console.error('HubSpot API error response:', errorText)
+          throw new Error(`HubSpot API error: ${hubspotResponse.statusText}. Details: ${errorText}`)
+        }
+
+        const hubspotData = await hubspotResponse.json()
+        allContacts.push(...(hubspotData.contacts || []))
+        
+        // Check if there are more contacts to fetch
+        hasMore = hubspotData['has-more']
+        offset = hubspotData['vid-offset']
+
+        console.log(`Received ${hubspotData.contacts?.length || 0} contacts in this page`)
+        
+        if (!hasMore) {
+          console.log('No more contacts to fetch')
+          break
+        }
       }
 
-      const hubspotData = await hubspotResponse.json()
-      console.log('Number of contacts received:', hubspotData.contacts?.length || 0)
+      console.log('Total number of contacts received:', allContacts.length)
 
       clearTimeout(timeout)
 
@@ -89,9 +109,11 @@ serve(async (req) => {
       let updatedCount = 0
       let insertedCount = 0
 
-      // Process all contacts from HubSpot MSEA members list
-      for (const contact of (hubspotData.contacts || [])) {
-        console.log('Processing contact:', contact.vid)
+      // Create a set of current HubSpot contact IDs
+      const currentHubspotIds = new Set(allContacts.map(c => parseInt(c.vid)))
+
+      // Process all contacts from HubSpot
+      for (const contact of allContacts) {
         const properties = contact.properties
         
         // Get primary email
@@ -129,16 +151,9 @@ serve(async (req) => {
         }
       }
 
-      console.log(`Updates prepared: ${updates.length}, Inserts prepared: ${inserts.length}`)
-
-      // Create a set of current HubSpot contact IDs for marking inactive profiles
-      const currentHubspotIds = new Set(hubspotData.contacts?.map(c => parseInt(c.vid)) || [])
-      
       // Find profiles to mark as inactive (those not in current HubSpot list)
       const inactiveUpdates = existingProfiles
-        ?.filter(profile => {
-          return !currentHubspotIds.has(profile['Record ID']) && profile.active
-        })
+        ?.filter(profile => !currentHubspotIds.has(profile['Record ID']) && profile.active)
         .map(profile => ({
           'Record ID': profile['Record ID'],
           'active': false
