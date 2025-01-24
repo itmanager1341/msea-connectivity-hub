@@ -56,10 +56,7 @@ function App() {
               session ? (
                 <AdminPortal />
               ) : (
-                <>
-                  {setShowAuth(true)}
-                  <Navigate to="/" replace />
-                </>
+                <Navigate to="/" replace />
               )
             }
           />
@@ -69,10 +66,7 @@ function App() {
               session ? (
                 <MemberPortal />
               ) : (
-                <>
-                  {setShowAuth(true)}
-                  <Navigate to="/" replace />
-                </>
+                <Navigate to="/" replace />
               )
             }
           />
