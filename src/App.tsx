@@ -1,3 +1,4 @@
+import React, { useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -8,7 +9,6 @@ import Resources from "./pages/Resources";
 import AdminPortal from "./pages/AdminPortal";
 import MemberPortal from "./pages/MemberPortal";
 import Auth from "./pages/Auth";
-import { useEffect, useState } from "react";
 import { supabase } from "./integrations/supabase/client";
 
 const queryClient = new QueryClient();
