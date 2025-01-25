@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { User, Lock, Edit2, Check, X } from "lucide-react";
+import { User, Lock, Edit2, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
@@ -23,7 +23,7 @@ const ProfilePage = () => {
   const [formData, setFormData] = useState<any>(null);
 
   // Get current user's session
-  const { data: session } = useQuery({
+  const { data: session, isLoading: isSessionLoading } = useQuery({
     queryKey: ["session"],
     queryFn: async () => {
       const { data: { session }, error } = await supabase.auth.getSession();
@@ -33,7 +33,7 @@ const ProfilePage = () => {
   });
 
   // Fetch profile data for the current user
-  const { data: profile, refetch: refetchProfile } = useQuery({
+  const { data: profile, isLoading: isProfileLoading, refetch: refetchProfile } = useQuery({
     queryKey: ["profile", session?.user?.email],
     queryFn: async () => {
       if (!session?.user?.email) throw new Error("No user email found");
@@ -54,7 +54,7 @@ const ProfilePage = () => {
   });
 
   // Fetch visibility settings using the user's UUID
-  const { data: visibility, refetch: refetchVisibility } = useQuery({
+  const { data: visibility, isLoading: isVisibilityLoading, refetch: refetchVisibility } = useQuery({
     queryKey: ["visibility", session?.user?.id],
     queryFn: async () => {
       if (!session?.user?.id) return null;
@@ -132,17 +132,18 @@ const ProfilePage = () => {
     }
   };
 
-  if (isLoading) {
-    return <div>Loading...</div>;
+  if (isSessionLoading || isProfileLoading || isVisibilityLoading) {
+    return <div className="flex items-center justify-center p-8">Loading...</div>;
   }
 
   if (!profile) {
-    return <div>Profile not found</div>;
+    return <div className="flex items-center justify-center p-8">Profile not found</div>;
   }
+
+  // ... keep existing code (rest of the JSX for the profile form)
 
   return (
     <div className="container max-w-4xl py-8 space-y-8">
-      {/* Profile Header */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div className="flex items-center space-x-4">
@@ -182,7 +183,7 @@ const ProfilePage = () => {
           </Button>
         </CardHeader>
       </Card>
-
+      
       {/* Basic Information */}
       <Card>
         <CardHeader>
@@ -240,7 +241,7 @@ const ProfilePage = () => {
           </div>
         </CardContent>
       </Card>
-
+      
       {/* Professional Information */}
       <Card>
         <CardHeader>
@@ -288,7 +289,7 @@ const ProfilePage = () => {
           </div>
         </CardContent>
       </Card>
-
+      
       {/* Location */}
       <Card>
         <CardHeader>
@@ -313,7 +314,7 @@ const ProfilePage = () => {
           </div>
         </CardContent>
       </Card>
-
+      
       {/* Bio */}
       <Card>
         <CardHeader>
@@ -331,7 +332,7 @@ const ProfilePage = () => {
           </div>
         </CardContent>
       </Card>
-
+      
       {/* Membership Information */}
       <Card>
         <CardHeader>
