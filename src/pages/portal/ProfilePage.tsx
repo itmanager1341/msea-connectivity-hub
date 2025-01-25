@@ -22,7 +22,7 @@ const ProfilePage = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<any>(null);
 
-  // Get current user's email
+  // Get current user's session
   const { data: session } = useQuery({
     queryKey: ["session"],
     queryFn: async () => {
@@ -53,22 +53,22 @@ const ProfilePage = () => {
     enabled: !!session?.user?.email,
   });
 
-  // Fetch visibility settings using the profile's email as the identifier
+  // Fetch visibility settings using the user's UUID as the identifier
   const { data: visibility } = useQuery({
-    queryKey: ["visibility"],
+    queryKey: ["visibility", session?.user?.id],
     queryFn: async () => {
-      if (!profile?.Email) return null;
+      if (!session?.user?.id) return null;
       
       const { data, error } = await supabase
         .from("profile_visibility")
         .select("*")
-        .eq("profile_id", profile.Email)
+        .eq("profile_id", session.user.id)
         .maybeSingle();
 
       if (error) throw error;
       return data;
     },
-    enabled: !!profile?.Email,
+    enabled: !!session?.user?.id,
   });
 
   const handleInputChange = (field: string, value: string) => {
@@ -103,15 +103,15 @@ const ProfilePage = () => {
 
   const handleVisibilityChange = async (field: string) => {
     try {
-      if (!profile?.Email) return;
+      if (!session?.user?.id) return;
 
       const { error } = await supabase
         .from("profile_visibility")
         .upsert({
-          profile_id: profile.Email,
+          profile_id: session.user.id,
           [field]: !visibility?.[field],
         })
-        .eq("profile_id", profile.Email);
+        .eq("profile_id", session.user.id);
 
       if (error) throw error;
 
