@@ -38,6 +38,7 @@ function App() {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       console.log("Auth state changed:", _event, session);
       setSession(session);
+      setIsLoading(false); // Make sure to set loading to false on auth state change
     });
 
     return () => subscription.unsubscribe();
@@ -47,7 +48,8 @@ function App() {
     return <div className="p-4 text-red-500">Error: {error}</div>;
   }
 
-  if (isLoading) {
+  // Only show loading state during initial load
+  if (isLoading && !session) {
     return <div className="p-4">Loading...</div>;
   }
 
