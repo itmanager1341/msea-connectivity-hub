@@ -21,7 +21,7 @@ function App() {
   useEffect(() => {
     console.log("Initializing auth state...");
     
-    // Set session persistence to 'local' for longer sessions
+    // Initial session check
     supabase.auth.getSession().then(({ data: { session }, error }) => {
       console.log("Session check completed", { session, error });
       if (error) {
@@ -30,29 +30,14 @@ function App() {
       }
       setSession(session);
       setIsLoading(false);
-    }).catch((err) => {
-      console.error("Unexpected error during session check:", err);
-      setError(err.message);
-      setIsLoading(false);
     });
 
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       console.log("Auth state changed:", _event, session);
       setSession(session);
-      if (session) {
-        // When session exists, update the auth settings to keep user logged in
-        try {
-          await supabase.auth.setSession({
-            access_token: session.access_token,
-            refresh_token: session.refresh_token,
-          });
-        } catch (err) {
-          console.error("Error setting session:", err);
-        }
-      }
     });
 
     return () => subscription.unsubscribe();
