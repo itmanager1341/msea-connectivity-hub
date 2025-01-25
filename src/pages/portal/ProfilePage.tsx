@@ -15,7 +15,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 const ProfilePage = () => {
   const { toast } = useToast();
@@ -33,7 +33,7 @@ const ProfilePage = () => {
   });
 
   // Fetch profile data for the current user
-  const { data: profile, isLoading } = useQuery({
+  const { data: profile, refetch: refetchProfile } = useQuery({
     queryKey: ["profile", session?.user?.email],
     queryFn: async () => {
       if (!session?.user?.email) throw new Error("No user email found");
@@ -53,8 +53,8 @@ const ProfilePage = () => {
     enabled: !!session?.user?.email,
   });
 
-  // Fetch visibility settings using the user's UUID as the identifier
-  const { data: visibility } = useQuery({
+  // Fetch visibility settings using the user's UUID
+  const { data: visibility, refetch: refetchVisibility } = useQuery({
     queryKey: ["visibility", session?.user?.id],
     queryFn: async () => {
       if (!session?.user?.id) return null;
@@ -83,19 +83,21 @@ const ProfilePage = () => {
       const { error } = await supabase
         .from("profiles")
         .update(formData)
-        .eq("Record ID", formData["Record ID"]);
+        .eq("Email", session?.user?.email);
 
       if (error) throw error;
 
+      await refetchProfile();
+      
       toast({
         title: "Profile updated",
         description: "Your profile has been successfully updated.",
       });
       setIsEditing(false);
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to update profile. Please try again.",
+        description: error.message || "Failed to update profile. Please try again.",
         variant: "destructive",
       });
     }
@@ -110,19 +112,21 @@ const ProfilePage = () => {
         .upsert({
           profile_id: session.user.id,
           [field]: !visibility?.[field],
-        })
-        .eq("profile_id", session.user.id);
+          updated_at: new Date().toISOString(),
+        });
 
       if (error) throw error;
 
+      await refetchVisibility();
+      
       toast({
         title: "Visibility updated",
         description: "Your visibility settings have been updated.",
       });
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to update visibility settings.",
+        description: error.message || "Failed to update visibility settings.",
         variant: "destructive",
       });
     }
