@@ -22,19 +22,35 @@ const ProfilePage = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<any>(null);
 
-  // Fetch profile data
-  const { data: profile, isLoading } = useQuery({
-    queryKey: ["profile"],
+  // Get current user's email
+  const { data: session } = useQuery({
+    queryKey: ["session"],
     queryFn: async () => {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error) throw error;
+      return session;
+    },
+  });
+
+  // Fetch profile data for the current user
+  const { data: profile, isLoading } = useQuery({
+    queryKey: ["profile", session?.user?.email],
+    queryFn: async () => {
+      if (!session?.user?.email) throw new Error("No user email found");
+
       const { data: profile, error } = await supabase
         .from("profiles")
         .select("*")
-        .single();
+        .eq("Email", session.user.email)
+        .maybeSingle();
 
       if (error) throw error;
+      if (!profile) throw new Error("Profile not found");
+      
       setFormData(profile);
       return profile;
     },
+    enabled: !!session?.user?.email,
   });
 
   // Fetch visibility settings using the profile's email as the identifier
@@ -114,6 +130,10 @@ const ProfilePage = () => {
 
   if (isLoading) {
     return <div>Loading...</div>;
+  }
+
+  if (!profile) {
+    return <div>Profile not found</div>;
   }
 
   return (
