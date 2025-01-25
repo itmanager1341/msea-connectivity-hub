@@ -42,7 +42,7 @@ function App() {
   }, []);
 
   if (isLoading) {
-    return null;
+    return <div>Loading...</div>;
   }
 
   return (
