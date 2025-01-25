@@ -16,11 +16,23 @@ const queryClient = new QueryClient();
 function App() {
   const [session, setSession] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    console.log("Initializing auth state...");
+    
     // Set session persistence to 'local' for longer sessions
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      console.log("Session check completed", { session, error });
+      if (error) {
+        console.error("Session check error:", error);
+        setError(error.message);
+      }
       setSession(session);
+      setIsLoading(false);
+    }).catch((err) => {
+      console.error("Unexpected error during session check:", err);
+      setError(err.message);
       setIsLoading(false);
     });
 
@@ -28,21 +40,30 @@ function App() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      console.log("Auth state changed:", _event, session);
       setSession(session);
       if (session) {
         // When session exists, update the auth settings to keep user logged in
-        await supabase.auth.setSession({
-          access_token: session.access_token,
-          refresh_token: session.refresh_token,
-        });
+        try {
+          await supabase.auth.setSession({
+            access_token: session.access_token,
+            refresh_token: session.refresh_token,
+          });
+        } catch (err) {
+          console.error("Error setting session:", err);
+        }
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
+  if (error) {
+    return <div className="p-4 text-red-500">Error: {error}</div>;
+  }
+
   if (isLoading) {
-    return <div>Loading...</div>;
+    return <div className="p-4">Loading...</div>;
   }
 
   return (
