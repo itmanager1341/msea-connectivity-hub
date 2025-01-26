@@ -24,7 +24,8 @@ import {
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 
-interface Profile {
+// Simplified type definitions to avoid recursive types
+type Profile = {
   "Record ID": number;
   "First Name": string | null;
   "Last Name": string | null;
@@ -44,22 +45,22 @@ interface Profile {
   "Member Since Date": string | null;
   "LinkedIn": string | null;
   active: boolean | null;
-}
+};
 
-interface SyncPreferences {
+type SyncPreferences = {
   id: string;
   two_way_sync: boolean | null;
   updated_at: string | null;
   updated_by: string | null;
   last_sync_timestamp: string | null;
-}
+};
 
 type SortableField = "Full Name" | "Company Name" | "Email" | "Phone Number" | "Membership" | "active";
 
-interface SortConfig {
+type SortConfig = {
   key: SortableField;
   direction: 'asc' | 'desc';
-}
+};
 
 const AdminPortal = () => {
   const [searchTerm, setSearchTerm] = useState("");
