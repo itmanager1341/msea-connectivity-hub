@@ -11,12 +11,29 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, RefreshCw } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Search, RefreshCw, ArrowUpDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+
+type SortConfig = {
+  key: string;
+  direction: 'asc' | 'desc';
+};
 
 const AdminPortal = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isSyncing, setIsSyncing] = useState(false);
+  const [selectedMembers, setSelectedMembers] = useState<number[]>([]);
+  const [sortConfig, setSortConfig] = useState<SortConfig>({ key: "Last Name", direction: 'asc' });
+  const [editingMember, setEditingMember] = useState<any>(null);
   const { toast } = useToast();
 
   const { data: profiles, isLoading, refetch } = useQuery({
@@ -38,10 +55,19 @@ const AdminPortal = () => {
     }
   });
 
+  const handleSort = (key: string) => {
+    setSortConfig(current => ({
+      key,
+      direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc'
+    }));
+  };
+
   const handleSync = async () => {
     setIsSyncing(true);
     try {
-      const response = await supabase.functions.invoke('sync-hubspot');
+      const response = await supabase.functions.invoke('sync-hubspot', {
+        body: { memberIds: selectedMembers.length > 0 ? selectedMembers : undefined }
+      });
       
       if (!response.data.success) {
         throw new Error(response.data.error || 'Sync failed');
@@ -53,9 +79,9 @@ const AdminPortal = () => {
         description: `Updated ${summary.updated} records, added ${summary.inserted} new records, and marked ${summary.deactivated} records as inactive.`,
       });
 
-      // Refresh the profiles list
+      setSelectedMembers([]);
       refetch();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Sync error:', error);
       toast({
         title: "Sync Failed",
@@ -67,7 +93,42 @@ const AdminPortal = () => {
     }
   };
 
-  const filteredProfiles = profiles?.filter(profile => {
+  const handleSaveMember = async () => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update(editingMember)
+        .eq('Record ID', editingMember['Record ID']);
+
+      if (error) throw error;
+
+      toast({
+        title: "Member Updated",
+        description: "Member information has been successfully updated.",
+      });
+
+      setEditingMember(null);
+      refetch();
+    } catch (error: any) {
+      toast({
+        title: "Update Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const sortedProfiles = [...(profiles || [])].sort((a, b) => {
+    const aValue = a[sortConfig.key]?.toString().toLowerCase() ?? '';
+    const bValue = b[sortConfig.key]?.toString().toLowerCase() ?? '';
+    
+    if (sortConfig.direction === 'asc') {
+      return aValue.localeCompare(bValue);
+    }
+    return bValue.localeCompare(aValue);
+  });
+
+  const filteredProfiles = sortedProfiles.filter(profile => {
     const searchLower = searchTerm.toLowerCase();
     return (
       profile["Full Name"]?.toLowerCase().includes(searchLower) ||
@@ -76,6 +137,14 @@ const AdminPortal = () => {
       profile["Membership"]?.toLowerCase().includes(searchLower)
     );
   });
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedMembers(filteredProfiles.map(p => p["Record ID"]));
+    } else {
+      setSelectedMembers([]);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#F7FAFC] p-8">
@@ -101,9 +170,8 @@ const AdminPortal = () => {
               className="flex items-center gap-2"
             >
               <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
-              {isSyncing ? 'Syncing...' : 'Sync with HubSpot'}
+              {isSyncing ? 'Syncing...' : `Sync ${selectedMembers.length ? `Selected (${selectedMembers.length})` : 'All'}`}
             </Button>
-            <Button>Add Member</Button>
           </div>
         </div>
 
@@ -115,18 +183,66 @@ const AdminPortal = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Company</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Membership</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead className="w-[50px]">
+                    <Checkbox
+                      checked={selectedMembers.length === filteredProfiles.length}
+                      onCheckedChange={handleSelectAll}
+                    />
+                  </TableHead>
+                  <TableHead onClick={() => handleSort("Full Name")} className="cursor-pointer hover:bg-gray-50">
+                    <div className="flex items-center">
+                      Name
+                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </div>
+                  </TableHead>
+                  <TableHead onClick={() => handleSort("Company Name")} className="cursor-pointer hover:bg-gray-50">
+                    <div className="flex items-center">
+                      Company
+                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </div>
+                  </TableHead>
+                  <TableHead onClick={() => handleSort("Email")} className="cursor-pointer hover:bg-gray-50">
+                    <div className="flex items-center">
+                      Email
+                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </div>
+                  </TableHead>
+                  <TableHead onClick={() => handleSort("Phone Number")} className="cursor-pointer hover:bg-gray-50">
+                    <div className="flex items-center">
+                      Phone
+                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </div>
+                  </TableHead>
+                  <TableHead onClick={() => handleSort("Membership")} className="cursor-pointer hover:bg-gray-50">
+                    <div className="flex items-center">
+                      Membership
+                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </div>
+                  </TableHead>
+                  <TableHead onClick={() => handleSort("active")} className="cursor-pointer hover:bg-gray-50">
+                    <div className="flex items-center">
+                      Status
+                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </div>
+                  </TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredProfiles?.map((profile) => (
                   <TableRow key={profile["Record ID"]}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedMembers.includes(profile["Record ID"])}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedMembers(prev => [...prev, profile["Record ID"]]);
+                          } else {
+                            setSelectedMembers(prev => prev.filter(id => id !== profile["Record ID"]));
+                          }
+                        }}
+                      />
+                    </TableCell>
                     <TableCell className="font-medium">
                       {profile["Full Name"]}
                     </TableCell>
@@ -144,7 +260,11 @@ const AdminPortal = () => {
                       </span>
                     </TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="sm">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => setEditingMember(profile)}
+                      >
                         Edit
                       </Button>
                     </TableCell>
@@ -155,6 +275,78 @@ const AdminPortal = () => {
           </div>
         )}
       </div>
+
+      {/* Edit Member Dialog */}
+      <Dialog open={!!editingMember} onOpenChange={(open) => !open && setEditingMember(null)}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Member</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="firstName" className="text-right">
+                First Name
+              </Label>
+              <Input
+                id="firstName"
+                value={editingMember?.["First Name"] || ""}
+                onChange={(e) => setEditingMember(prev => ({ ...prev, "First Name": e.target.value }))}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="lastName" className="text-right">
+                Last Name
+              </Label>
+              <Input
+                id="lastName"
+                value={editingMember?.["Last Name"] || ""}
+                onChange={(e) => setEditingMember(prev => ({ ...prev, "Last Name": e.target.value }))}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="email" className="text-right">
+                Email
+              </Label>
+              <Input
+                id="email"
+                value={editingMember?.["Email"] || ""}
+                onChange={(e) => setEditingMember(prev => ({ ...prev, "Email": e.target.value }))}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="phone" className="text-right">
+                Phone
+              </Label>
+              <Input
+                id="phone"
+                value={editingMember?.["Phone Number"] || ""}
+                onChange={(e) => setEditingMember(prev => ({ ...prev, "Phone Number": e.target.value }))}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="company" className="text-right">
+                Company
+              </Label>
+              <Input
+                id="company"
+                value={editingMember?.["Company Name"] || ""}
+                onChange={(e) => setEditingMember(prev => ({ ...prev, "Company Name": e.target.value }))}
+                className="col-span-3"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingMember(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveMember}>Save Changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
