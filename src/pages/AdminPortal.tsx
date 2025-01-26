@@ -181,7 +181,7 @@ const AdminPortal = () => {
         .update(updateData)
         .eq('"Record ID"', editingMember['Record ID'])
         .select()
-        .single();
+        .maybeSingle();
 
       if (updateError) {
         console.error('Error updating profile:', updateError);
@@ -200,7 +200,8 @@ const AdminPortal = () => {
           const response = await supabase.functions.invoke('sync-hubspot', {
             body: { 
               memberIds: [editingMember['Record ID']],
-              direction: 'to_hubspot'
+              direction: 'to_hubspot',
+              data: updateData
             }
           });
 
@@ -281,8 +282,9 @@ const AdminPortal = () => {
   };
 
   const sortedProfiles = [...(profiles || [])].sort((a: Profile, b: Profile) => {
-    const aValue = String(a[sortConfig.key] ?? '');
-    const bValue = String(b[sortConfig.key] ?? '');
+    const key = sortConfig.key;
+    const aValue = a[key] === null ? '' : String(a[key]);
+    const bValue = b[key] === null ? '' : String(b[key]);
     
     return sortConfig.direction === 'asc' 
       ? aValue.localeCompare(bValue)
