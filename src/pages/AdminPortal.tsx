@@ -26,7 +26,7 @@ import { Switch } from "@/components/ui/switch";
 
 // Simplified type definitions to avoid recursive types
 type Profile = {
-  "Record ID": number;
+  record_id: number;  // Updated from "Record ID"
   "First Name": string | null;
   "Last Name": string | null;
   "Full Name": string | null;
@@ -160,11 +160,10 @@ const AdminPortal = () => {
       
       console.log('Attempting to save member data:', editingMember);
       
-      // Convert Record ID to number and verify the profile exists
-      const recordId = parseInt(editingMember['Record ID'].toString());
-      console.log('Looking up profile with Record ID:', recordId);
+      // Convert record_id to number and verify the profile exists
+      const recordId = parseInt(editingMember.record_id.toString());
+      console.log('Looking up profile with record_id:', recordId);
       
-      // Use rpc to query with raw SQL to avoid PostgREST column name issues
       const { data: existingProfile, error: fetchError } = await supabase
         .rpc('get_profile_by_record_id', { record_id_param: recordId }) as { 
           data: Profile[] | null;
@@ -177,7 +176,7 @@ const AdminPortal = () => {
       }
 
       if (!existingProfile || existingProfile.length === 0) {
-        throw new Error(`Profile with Record ID ${recordId} not found`);
+        throw new Error(`Profile with record_id ${recordId} not found`);
       }
 
       // Prepare update data
@@ -198,7 +197,6 @@ const AdminPortal = () => {
 
       console.log('Updating profile with data:', updateData);
 
-      // Use rpc to update with raw SQL to avoid PostgREST column name issues
       const { data: updatedProfile, error: updateError } = await supabase
         .rpc('update_profile_by_record_id', { 
           record_id_param: recordId,
@@ -377,7 +375,7 @@ const AdminPortal = () => {
                       checked={selectedMembers.length === profiles?.length}
                       onCheckedChange={(checked) => {
                         if (checked) {
-                          setSelectedMembers(profiles?.map(p => p["Record ID"]) || []);
+                          setSelectedMembers(profiles?.map(p => p.record_id) || []);
                         } else {
                           setSelectedMembers([]);
                         }
@@ -425,15 +423,15 @@ const AdminPortal = () => {
               </TableHeader>
               <TableBody>
                 {filteredProfiles?.map((profile) => (
-                  <TableRow key={profile["Record ID"]}>
+                  <TableRow key={profile.record_id}>
                     <TableCell>
                       <Checkbox
-                        checked={selectedMembers.includes(profile["Record ID"])}
+                        checked={selectedMembers.includes(profile.record_id)}
                         onCheckedChange={(checked) => {
                           if (checked) {
-                            setSelectedMembers(prev => [...prev, profile["Record ID"]]);
+                            setSelectedMembers(prev => [...prev, profile.record_id]);
                           } else {
-                            setSelectedMembers(prev => prev.filter(id => id !== profile["Record ID"]));
+                            setSelectedMembers(prev => prev.filter(id => id !== profile.record_id));
                           }
                         }}
                       />

@@ -86,67 +86,64 @@ export type Database = {
       }
       profiles: {
         Row: {
-          active: boolean | null
-          Bio: string | null
-          City: string | null
+          record_id: number  // Updated from "Record ID"
+          "First Name": string | null
+          "Last Name": string | null
+          "Full Name": string | null
           "Company Name": string | null
           "Create Date": string | null
           Email: string | null
           "Email Domain": string | null
-          "First Name": string | null
-          "Full Name": string | null
-          Industry: string | null
+          "Profession - FSI": string | null
           "Job Title": string | null
-          "Last Name": string | null
-          LinkedIn: string | null
+          "Phone Number": string | null
+          "Bio": string | null
           "Member Since Date": string | null
           Membership: string | null
-          "Phone Number": string | null
-          "Profession - FSI": string | null
-          "Record ID": number
+          Industry: string | null
           "State/Region": string | null
+          City: string | null
+          active: boolean | null
         }
         Insert: {
-          active?: boolean | null
-          Bio?: string | null
-          City?: string | null
+          record_id: number  // Updated from "Record ID"
+          "First Name"?: string | null
+          "Last Name"?: string | null
+          "Full Name"?: string | null
           "Company Name"?: string | null
           "Create Date"?: string | null
           Email?: string | null
           "Email Domain"?: string | null
-          "First Name"?: string | null
-          "Full Name"?: string | null
-          Industry?: string | null
+          "Profession - FSI"?: string | null
           "Job Title"?: string | null
-          "Last Name"?: string | null
-          LinkedIn?: string | null
+          "Phone Number"?: string | null
+          "Bio"?: string | null
           "Member Since Date"?: string | null
           Membership?: string | null
-          "Phone Number"?: string | null
-          "Profession - FSI"?: string | null
-          "Record ID": number
+          Industry?: string | null
           "State/Region"?: string | null
+          City?: string | null
+          active?: boolean | null
         }
         Update: {
-          active?: boolean | null
-          Bio?: string | null
-          City?: string | null
+          record_id?: number  // Updated from "Record ID"
+          "First Name"?: string | null
+          "Last Name"?: string | null
+          "Full Name"?: string | null
           "Company Name"?: string | null
           "Create Date"?: string | null
           Email?: string | null
           "Email Domain"?: string | null
-          "First Name"?: string | null
-          "Full Name"?: string | null
-          Industry?: string | null
+          "Profession - FSI"?: string | null
           "Job Title"?: string | null
-          "Last Name"?: string | null
-          LinkedIn?: string | null
+          "Phone Number"?: string | null
+          "Bio"?: string | null
           "Member Since Date"?: string | null
           Membership?: string | null
-          "Phone Number"?: string | null
-          "Profession - FSI"?: string | null
-          "Record ID"?: number
+          Industry?: string | null
           "State/Region"?: string | null
+          City?: string | null
+          active?: boolean | null
         }
         Relationships: []
       }
@@ -251,7 +248,7 @@ export type Tables<
   TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
     ? keyof (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
         Database[PublicTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never,
 > = PublicTableNameOrOptions extends { schema: keyof Database }
   ? (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
       Database[PublicTableNameOrOptions["schema"]]["Views"])[TableName] extends {
@@ -305,10 +302,10 @@ export type TablesUpdate<
     : never
   : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
     ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
-        Update: infer U
-      }
-      ? U
-      : never
+      Update: infer U
+    }
+    ? U
+    : never
     : never
 
 export type Enums<
