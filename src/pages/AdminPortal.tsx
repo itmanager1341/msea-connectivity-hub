@@ -202,9 +202,10 @@ const AdminPortal = () => {
 
       console.log('Updating profile with data:', updateData);
 
+      // Ensure record_id is passed as a number
       const { data: updatedProfile, error: updateError } = await supabase
         .rpc('update_profile_by_record_id', { 
-          record_id_param: editingMember.record_id,
+          record_id_param: Number(editingMember.record_id),
           update_data: updateData 
         });
 
@@ -215,7 +216,7 @@ const AdminPortal = () => {
         throw updateError;
       }
 
-      if (!updatedProfile || updatedProfile.length === 0) {
+      if (!updatedProfile || (Array.isArray(updatedProfile) && updatedProfile.length === 0)) {
         throw new Error('Profile update failed - no rows affected');
       }
 
