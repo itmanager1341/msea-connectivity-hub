@@ -29,16 +29,47 @@ type SortConfig = {
   direction: 'asc' | 'desc';
 };
 
+// Define the profile type based on the database schema
+type Profile = {
+  "Record ID": number;
+  "First Name": string | null;
+  "Last Name": string | null;
+  "Full Name": string | null;
+  "Company Name": string | null;
+  "Membership": string | null;
+  "Email": string | null;
+  "Job Title": string | null;
+  "Profession - FSI": string | null;
+  "Phone Number": string | null;
+  "Create Date": string | null;
+  "Industry": string | null;
+  "State/Region": string | null;
+  "City": string | null;
+  "Email Domain": string | null;
+  "Bio": string | null;
+  "Member Since Date": string | null;
+  "LinkedIn": string | null;
+  active: boolean | null;
+};
+
+// Define the sync preferences type
+type SyncPreferences = {
+  id: string;
+  two_way_sync: boolean | null;
+  updated_at: string | null;
+  updated_by: string | null;
+  last_sync_timestamp: string | null;
+};
+
 const AdminPortal = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isSyncing, setIsSyncing] = useState(false);
   const [selectedMembers, setSelectedMembers] = useState<number[]>([]);
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: "Last Name", direction: 'asc' });
-  const [editingMember, setEditingMember] = useState<any>(null);
+  const [editingMember, setEditingMember] = useState<Profile | null>(null);
   const { toast } = useToast();
 
-  // Update sync preferences query to use maybeSingle
-  const { data: syncPrefs, refetch: refetchSyncPrefs } = useQuery({
+  const { data: syncPrefs, refetch: refetchSyncPrefs } = useQuery<SyncPreferences | null>({
     queryKey: ['sync-preferences'],
     queryFn: async () => {
       console.log('Fetching sync preferences...');
@@ -56,7 +87,7 @@ const AdminPortal = () => {
     }
   });
 
-  const { data: profiles, isLoading, refetch } = useQuery({
+  const { data: profiles, isLoading, refetch } = useQuery<Profile[]>({
     queryKey: ['admin-profiles'],
     queryFn: async () => {
       console.log('Fetching profiles for admin portal...');
