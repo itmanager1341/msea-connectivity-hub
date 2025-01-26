@@ -54,39 +54,9 @@ export type Database = {
         }
         Relationships: []
       }
-      profile_visibility: {
-        Row: {
-          created_at: string
-          id: string
-          profile_id: string
-          show_email: boolean | null
-          show_linkedin: boolean | null
-          show_phone: boolean | null
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          profile_id: string
-          show_email?: boolean | null
-          show_linkedin?: boolean | null
-          show_phone?: boolean | null
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          profile_id?: string
-          show_email?: boolean | null
-          show_linkedin?: boolean | null
-          show_phone?: boolean | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
       profiles: {
         Row: {
-          record_id: number  // Updated from "Record ID"
+          record_id: number
           "First Name": string | null
           "Last Name": string | null
           "Full Name": string | null
@@ -103,10 +73,11 @@ export type Database = {
           Industry: string | null
           "State/Region": string | null
           City: string | null
+          "LinkedIn": string | null
           active: boolean | null
         }
         Insert: {
-          record_id: number  // Updated from "Record ID"
+          record_id: number
           "First Name"?: string | null
           "Last Name"?: string | null
           "Full Name"?: string | null
@@ -123,10 +94,11 @@ export type Database = {
           Industry?: string | null
           "State/Region"?: string | null
           City?: string | null
+          "LinkedIn"?: string | null
           active?: boolean | null
         }
         Update: {
-          record_id?: number  // Updated from "Record ID"
+          record_id?: number
           "First Name"?: string | null
           "Last Name"?: string | null
           "Full Name"?: string | null
@@ -143,6 +115,7 @@ export type Database = {
           Industry?: string | null
           "State/Region"?: string | null
           City?: string | null
+          "LinkedIn"?: string | null
           active?: boolean | null
         }
         Relationships: []

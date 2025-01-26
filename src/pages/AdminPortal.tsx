@@ -24,9 +24,9 @@ import {
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 
-// Simplified type definitions to avoid recursive types
+// Updated Profile type to match database schema
 type Profile = {
-  record_id: number;  // Updated from "Record ID"
+  record_id: number;
   "First Name": string | null;
   "Last Name": string | null;
   "Full Name": string | null;
@@ -73,7 +73,7 @@ const AdminPortal = () => {
   const [editingMember, setEditingMember] = useState<Profile | null>(null);
   const { toast } = useToast();
 
-  const { data: syncPrefs, refetch: refetchSyncPrefs } = useQuery<SyncPreferences | null>({
+  const { data: syncPrefs, refetch: refetchSyncPrefs } = useQuery<SyncPreferences>({
     queryKey: ['sync-preferences'],
     queryFn: async () => {
       console.log('Fetching sync preferences...');
@@ -87,11 +87,11 @@ const AdminPortal = () => {
         throw error;
       }
       console.log('Sync preferences:', data);
-      return data;
+      return data as SyncPreferences;
     }
   });
 
-  const { data: profiles, isLoading, refetch } = useQuery<Profile[]>({
+  const { data: profiles = [], isLoading, refetch } = useQuery<Profile[]>({
     queryKey: ['admin-profiles'],
     queryFn: async () => {
       console.log('Fetching profiles for admin portal...');
@@ -105,8 +105,14 @@ const AdminPortal = () => {
         throw error;
       }
 
-      console.log('Profiles fetched:', data);
-      return data || [];
+      // Ensure all required fields are present, even if null
+      const processedData = (data || []).map(profile => ({
+        ...profile,
+        "LinkedIn": profile["LinkedIn"] || null
+      })) as Profile[];
+
+      console.log('Profiles fetched:', processedData);
+      return processedData;
     }
   });
 
@@ -302,7 +308,7 @@ const AdminPortal = () => {
     }
   };
 
-  const sortedProfiles = [...(profiles || [])].sort((a: Profile, b: Profile) => {
+  const sortedProfiles = [...profiles].sort((a: Profile, b: Profile) => {
     const key = sortConfig.key;
     const aValue = a[key] === null ? '' : String(a[key]);
     const bValue = b[key] === null ? '' : String(b[key]);
