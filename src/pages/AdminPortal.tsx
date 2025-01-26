@@ -24,13 +24,8 @@ import {
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 
-type SortConfig = {
-  key: keyof Profile;
-  direction: 'asc' | 'desc';
-};
-
-// Define the profile type based on the database schema
-type Profile = {
+// Define strict types for our data structures
+interface Profile {
   "Record ID": number;
   "First Name": string | null;
   "Last Name": string | null;
@@ -50,15 +45,19 @@ type Profile = {
   "Member Since Date": string | null;
   "LinkedIn": string | null;
   active: boolean | null;
-};
+}
 
-// Define the sync preferences type
-type SyncPreferences = {
+interface SyncPreferences {
   id: string;
   two_way_sync: boolean | null;
   updated_at: string | null;
   updated_by: string | null;
   last_sync_timestamp: string | null;
+}
+
+type SortConfig = {
+  key: keyof Profile;
+  direction: 'asc' | 'desc';
 };
 
 const AdminPortal = () => {
