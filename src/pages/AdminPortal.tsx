@@ -41,12 +41,17 @@ const AdminPortal = () => {
   const { data: syncPrefs, refetch: refetchSyncPrefs } = useQuery({
     queryKey: ['sync-preferences'],
     queryFn: async () => {
+      console.log('Fetching sync preferences...');
       const { data, error } = await supabase
         .from('sync_preferences')
         .select('*')
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching sync preferences:', error);
+        throw error;
+      }
+      console.log('Sync preferences:', data);
       return data;
     }
   });
@@ -83,7 +88,7 @@ const AdminPortal = () => {
       const response = await supabase.functions.invoke('sync-hubspot', {
         body: { 
           memberIds: selectedMembers.length > 0 ? selectedMembers : undefined,
-          direction: 'from_hubspot'  // Explicitly set direction
+          direction: 'from_hubspot'
         }
       });
       
@@ -115,15 +120,30 @@ const AdminPortal = () => {
     try {
       console.log('Saving member data:', editingMember);
       
+      // Update the profile in Supabase
       const { error: updateError } = await supabase
         .from('profiles')
-        .update(editingMember)
+        .update({
+          "First Name": editingMember["First Name"],
+          "Last Name": editingMember["Last Name"],
+          "Full Name": `${editingMember["First Name"]} ${editingMember["Last Name"]}`.trim(),
+          "Email": editingMember["Email"],
+          "Phone Number": editingMember["Phone Number"],
+          "Company Name": editingMember["Company Name"],
+          "LinkedIn": editingMember["LinkedIn"]
+        })
         .eq('Record ID', editingMember['Record ID']);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('Error updating profile:', updateError);
+        throw updateError;
+      }
 
+      console.log('Profile updated in Supabase');
+
+      // If two-way sync is enabled, sync to HubSpot
       if (syncPrefs?.two_way_sync) {
-        // If two-way sync is enabled, trigger the sync
+        console.log('Two-way sync is enabled, syncing to HubSpot...');
         const response = await supabase.functions.invoke('sync-hubspot', {
           body: { 
             memberIds: [editingMember['Record ID']],
@@ -134,6 +154,7 @@ const AdminPortal = () => {
         if (!response.data.success) {
           throw new Error(response.data.error || 'Sync to HubSpot failed');
         }
+        console.log('Synced to HubSpot successfully');
       }
 
       toast({
@@ -157,6 +178,7 @@ const AdminPortal = () => {
 
   const handleToggleTwoWaySync = async () => {
     try {
+      console.log('Toggling two-way sync...');
       const { error } = await supabase
         .from('sync_preferences')
         .upsert({
@@ -165,14 +187,19 @@ const AdminPortal = () => {
           updated_at: new Date().toISOString(),
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error updating sync preferences:', error);
+        throw error;
+      }
 
+      console.log('Sync preferences updated');
       refetchSyncPrefs();
       toast({
         title: "Sync Preferences Updated",
         description: `Two-way sync has been ${!syncPrefs?.two_way_sync ? 'enabled' : 'disabled'}.`,
       });
     } catch (error: any) {
+      console.error('Error toggling two-way sync:', error);
       toast({
         title: "Error",
         description: "Failed to update sync preferences.",
