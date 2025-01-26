@@ -113,6 +113,8 @@ const ProfilePage = () => {
           profile_id: session.user.id,
           [field]: !visibility?.[field],
           updated_at: new Date().toISOString(),
+        }, {
+          onConflict: 'profile_id'
         });
 
       if (error) throw error;
