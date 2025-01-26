@@ -160,11 +160,11 @@ const AdminPortal = () => {
       
       console.log('Attempting to save member data:', editingMember);
       
-      // First verify the profile exists using email
+      // First verify the profile exists using Record ID
       const { data: existingProfile, error: fetchError } = await supabase
         .from('profiles')
         .select('*')
-        .eq('Email', editingMember['Email'])
+        .eq('Record ID', editingMember['Record ID'])
         .maybeSingle();
 
       if (fetchError) {
@@ -173,7 +173,7 @@ const AdminPortal = () => {
       }
 
       if (!existingProfile) {
-        throw new Error(`Profile with email ${editingMember['Email']} not found`);
+        throw new Error(`Profile with Record ID ${editingMember['Record ID']} not found`);
       }
 
       // Prepare update data
@@ -194,11 +194,11 @@ const AdminPortal = () => {
 
       console.log('Updating profile with data:', updateData);
 
-      // Update the profile using email as identifier
+      // Update the profile using Record ID as identifier
       const { data: updatedProfile, error: updateError } = await supabase
         .from('profiles')
         .update(updateData)
-        .eq('Email', editingMember['Email'])
+        .eq('Record ID', editingMember['Record ID'])
         .select()
         .maybeSingle();
 
