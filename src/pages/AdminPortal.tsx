@@ -184,7 +184,7 @@ const AdminPortal = () => {
         "Email": editingMember["Email"],
         "Phone Number": editingMember["Phone Number"],
         "Company Name": editingMember["Company Name"],
-        "LinkedIn": editingMember["LinkedIn"]
+        "LinkedIn": editingMember["LinkedIn"] || null // Ensure null if empty
       };
 
       console.log('Updating profile with data:', updateData);
@@ -215,7 +215,8 @@ const AdminPortal = () => {
           const response = await supabase.functions.invoke('sync-hubspot', {
             body: { 
               memberIds: [editingMember['Record ID']],
-              direction: 'to_hubspot'
+              direction: 'to_hubspot',
+              fields: ['firstname', 'lastname', 'email', 'phone', 'company', 'linkedin'] // Explicitly specify fields
             }
           });
 

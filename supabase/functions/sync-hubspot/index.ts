@@ -22,7 +22,7 @@ serve(async (req) => {
       throw new Error('HUBSPOT_API_KEY is not set')
     }
 
-    const { memberIds, direction = 'from_hubspot' } = await req.json()
+    const { memberIds, direction = 'from_hubspot', fields } = await req.json()
     console.log(`Starting HubSpot sync process... Direction: ${direction}, Member IDs:`, memberIds)
 
     // Initialize Supabase client
@@ -73,8 +73,8 @@ serve(async (req) => {
                 { property: 'lastname', value: profile['Last Name'] },
                 { property: 'company', value: profile['Company Name'] },
                 { property: 'phone', value: profile['Phone Number'] },
-                { property: 'linkedin', value: profile['LinkedIn'] }
-              ]
+                { property: 'linkedin', value: profile['LinkedIn'] || '' }
+              ].filter(prop => !fields || fields.includes(prop.property)) // Only include specified fields
             })
           }
         );
@@ -92,23 +92,6 @@ serve(async (req) => {
         if (!response.ok) {
           // Don't throw error, just log it and continue with other updates
           console.error(`Failed to update HubSpot contact ${profile['Record ID']}: ${JSON.stringify(responseData)}`);
-          continue;
-        }
-
-        // Verify the contact is still in the MSEA list
-        const listResponse = await fetch(
-          `https://api.hubapi.com/contacts/v1/lists/3190/contacts/all?count=1&vidOffset=${profile['Record ID']}`,
-          {
-            headers: {
-              'Authorization': `Bearer ${HUBSPOT_API_KEY}`,
-              'Content-Type': 'application/json',
-            }
-          }
-        );
-
-        const listData = await listResponse.json();
-        if (!listData.contacts?.some(c => c.vid === profile['Record ID'])) {
-          console.warn(`Contact ${profile['Record ID']} is not in the MSEA list anymore`);
           continue;
         }
 
