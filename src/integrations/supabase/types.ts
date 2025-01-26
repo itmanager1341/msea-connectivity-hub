@@ -223,6 +223,10 @@ export type Database = {
           like: unknown
         }[]
       }
+      is_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       update_profile_by_record_id: {
         Args: {
           record_id_param: string
