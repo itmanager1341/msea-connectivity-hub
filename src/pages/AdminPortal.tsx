@@ -22,6 +22,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 
 type SortConfig = {
   key: string;
@@ -35,6 +36,20 @@ const AdminPortal = () => {
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: "Last Name", direction: 'asc' });
   const [editingMember, setEditingMember] = useState<any>(null);
   const { toast } = useToast();
+
+  // Fetch sync preferences
+  const { data: syncPrefs, refetch: refetchSyncPrefs } = useQuery({
+    queryKey: ['sync-preferences'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('sync_preferences')
+        .select('*')
+        .single();
+      
+      if (error) throw error;
+      return data;
+    }
+  });
 
   const { data: profiles, isLoading, refetch } = useQuery({
     queryKey: ['admin-profiles'],
@@ -66,7 +81,10 @@ const AdminPortal = () => {
     setIsSyncing(true);
     try {
       const response = await supabase.functions.invoke('sync-hubspot', {
-        body: { memberIds: selectedMembers.length > 0 ? selectedMembers : undefined }
+        body: { 
+          memberIds: selectedMembers.length > 0 ? selectedMembers : undefined,
+          direction: 'from_hubspot'  // Explicitly set direction
+        }
       });
       
       if (!response.data.success) {
@@ -95,27 +113,27 @@ const AdminPortal = () => {
 
   const handleSaveMember = async () => {
     try {
-      const { error } = await supabase
+      console.log('Saving member data:', editingMember);
+      
+      const { error: updateError } = await supabase
         .from('profiles')
         .update(editingMember)
         .eq('Record ID', editingMember['Record ID']);
 
-      if (error) throw error;
-
-      // Check sync preferences
-      const { data: syncPrefs } = await supabase
-        .from('sync_preferences')
-        .select('two_way_sync')
-        .single();
+      if (updateError) throw updateError;
 
       if (syncPrefs?.two_way_sync) {
         // If two-way sync is enabled, trigger the sync
-        await supabase.functions.invoke('sync-hubspot', {
+        const response = await supabase.functions.invoke('sync-hubspot', {
           body: { 
             memberIds: [editingMember['Record ID']],
             direction: 'to_hubspot'
           }
         });
+
+        if (!response.data.success) {
+          throw new Error(response.data.error || 'Sync to HubSpot failed');
+        }
       }
 
       toast({
@@ -128,9 +146,36 @@ const AdminPortal = () => {
       setEditingMember(null);
       refetch();
     } catch (error: any) {
+      console.error('Update error:', error);
       toast({
         title: "Update Failed",
         description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleToggleTwoWaySync = async () => {
+    try {
+      const { error } = await supabase
+        .from('sync_preferences')
+        .upsert({
+          id: syncPrefs?.id || undefined,
+          two_way_sync: !syncPrefs?.two_way_sync,
+          updated_at: new Date().toISOString(),
+        });
+
+      if (error) throw error;
+
+      refetchSyncPrefs();
+      toast({
+        title: "Sync Preferences Updated",
+        description: `Two-way sync has been ${!syncPrefs?.two_way_sync ? 'enabled' : 'disabled'}.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Failed to update sync preferences.",
         variant: "destructive",
       });
     }
@@ -167,7 +212,18 @@ const AdminPortal = () => {
   return (
     <div className="min-h-screen bg-[#F7FAFC] p-8">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold text-[#1A365D] mb-8">Member Management</h1>
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold text-[#1A365D]">Member Management</h1>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={syncPrefs?.two_way_sync || false}
+                onCheckedChange={handleToggleTwoWaySync}
+              />
+              <Label>Two-way Sync</Label>
+            </div>
+          </div>
+        </div>
         
         {/* Search and Actions Bar */}
         <div className="flex justify-between items-center mb-6">
@@ -203,8 +259,14 @@ const AdminPortal = () => {
                 <TableRow>
                   <TableHead className="w-[50px]">
                     <Checkbox
-                      checked={selectedMembers.length === filteredProfiles.length}
-                      onCheckedChange={handleSelectAll}
+                      checked={selectedMembers.length === profiles?.length}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedMembers(profiles?.map(p => p["Record ID"]) || []);
+                        } else {
+                          setSelectedMembers([]);
+                        }
+                      }}
                     />
                   </TableHead>
                   <TableHead onClick={() => handleSort("Full Name")} className="cursor-pointer hover:bg-gray-50">
