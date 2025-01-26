@@ -55,16 +55,28 @@ interface SyncPreferences {
   last_sync_timestamp: string | null;
 }
 
-type SortConfig = {
-  key: keyof Profile;
+type SortableFields = keyof Pick<Profile, 
+  | "Full Name" 
+  | "Company Name" 
+  | "Email" 
+  | "Phone Number" 
+  | "Membership" 
+  | "active"
+>;
+
+interface SortConfig {
+  key: SortableFields;
   direction: 'asc' | 'desc';
-};
+}
 
 const AdminPortal = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isSyncing, setIsSyncing] = useState(false);
   const [selectedMembers, setSelectedMembers] = useState<number[]>([]);
-  const [sortConfig, setSortConfig] = useState<SortConfig>({ key: "Last Name", direction: 'asc' });
+  const [sortConfig, setSortConfig] = useState<SortConfig>({ 
+    key: "Full Name", 
+    direction: 'asc' 
+  });
   const [editingMember, setEditingMember] = useState<Profile | null>(null);
   const { toast } = useToast();
 
