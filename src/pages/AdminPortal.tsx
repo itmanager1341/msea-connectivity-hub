@@ -25,7 +25,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 
 type SortConfig = {
-  key: string;
+  key: keyof Profile;
   direction: 'asc' | 'desc';
 };
 
@@ -106,7 +106,7 @@ const AdminPortal = () => {
     }
   });
 
-  const handleSort = (key: string) => {
+  const handleSort = (key: keyof Profile) => {
     setSortConfig(current => ({
       key,
       direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc'
@@ -156,7 +156,6 @@ const AdminPortal = () => {
       
       console.log('Attempting to save member data:', editingMember);
       
-      // First verify the profile exists using proper column encoding
       const { data: existingProfile, error: fetchError } = await supabase
         .from('profiles')
         .select('*')
@@ -174,7 +173,6 @@ const AdminPortal = () => {
 
       console.log('Existing profile:', existingProfile);
 
-      // Update the profile in Supabase with explicit column names and proper encoding
       const updateData = {
         "First Name": editingMember["First Name"],
         "Last Name": editingMember["Last Name"],
@@ -205,7 +203,6 @@ const AdminPortal = () => {
 
       console.log('Profile updated in Supabase:', updatedProfile);
 
-      // Check sync preferences and sync to HubSpot if enabled
       if (syncPrefs?.two_way_sync) {
         console.log('Two-way sync is enabled, syncing to HubSpot...');
         const response = await supabase.functions.invoke('sync-hubspot', {
@@ -225,7 +222,6 @@ const AdminPortal = () => {
         console.log('Two-way sync is disabled, skipping HubSpot sync');
       }
 
-      // Refresh the data
       refetch();
       
       toast({
@@ -279,8 +275,8 @@ const AdminPortal = () => {
   };
 
   const sortedProfiles = [...(profiles || [])].sort((a, b) => {
-    const aValue = a[sortConfig.key]?.toString().toLowerCase() ?? '';
-    const bValue = b[sortConfig.key]?.toString().toLowerCase() ?? '';
+    const aValue = String(a[sortConfig.key] ?? '').toLowerCase();
+    const bValue = String(b[sortConfig.key] ?? '').toLowerCase();
     
     if (sortConfig.direction === 'asc') {
       return aValue.localeCompare(bValue);
@@ -291,10 +287,10 @@ const AdminPortal = () => {
   const filteredProfiles = sortedProfiles.filter(profile => {
     const searchLower = searchTerm.toLowerCase();
     return (
-      profile["Full Name"]?.toLowerCase().includes(searchLower) ||
-      profile["Company Name"]?.toLowerCase().includes(searchLower) ||
-      profile["Email"]?.toLowerCase().includes(searchLower) ||
-      profile["Membership"]?.toLowerCase().includes(searchLower)
+      String(profile["Full Name"])?.toLowerCase().includes(searchLower) ||
+      String(profile["Company Name"])?.toLowerCase().includes(searchLower) ||
+      String(profile["Email"])?.toLowerCase().includes(searchLower) ||
+      String(profile["Membership"])?.toLowerCase().includes(searchLower)
     );
   });
 
