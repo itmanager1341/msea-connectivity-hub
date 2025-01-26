@@ -27,14 +27,27 @@ serve(async (req) => {
 
     if (direction === 'to_hubspot') {
       // Sync from Supabase to HubSpot
+      console.log('Fetching profiles from Supabase...');
       const { data: profiles, error: fetchError } = await supabase
         .from('profiles')
         .select('*')
         .in('Record ID', memberIds);
 
-      if (fetchError) throw fetchError;
+      if (fetchError) {
+        console.error('Error fetching profiles:', fetchError);
+        throw fetchError;
+      }
 
-      for (const profile of profiles || []) {
+      console.log('Profiles fetched:', profiles);
+
+      if (!profiles || profiles.length === 0) {
+        throw new Error('No profiles found to update in HubSpot');
+      }
+
+      const results = [];
+      for (const profile of profiles) {
+        console.log(`Updating HubSpot contact for Record ID: ${profile['Record ID']}`);
+        
         // Update contact in HubSpot
         const response = await fetch(
           `https://api.hubapi.com/contacts/v1/contact/vid/${profile['Record ID']}/profile`,
@@ -50,27 +63,29 @@ serve(async (req) => {
                 { property: 'lastname', value: profile['Last Name'] },
                 { property: 'company', value: profile['Company Name'] },
                 { property: 'phone', value: profile['Phone Number'] },
-                { property: 'jobtitle', value: profile['Job Title'] },
-                { property: 'industry', value: profile['Industry'] },
-                { property: 'state', value: profile['State/Region'] },
-                { property: 'city', value: profile['City'] },
-                { property: 'linkedin', value: profile['LinkedIn'] },
+                { property: 'linkedin', value: profile['LinkedIn'] }
               ]
             })
           }
         );
 
+        const responseText = await response.text();
+        console.log(`HubSpot API response for ${profile['Record ID']}:`, responseText);
+
         if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`Failed to update HubSpot contact: ${errorText}`);
+          throw new Error(`Failed to update HubSpot contact: ${responseText}`);
         }
+
+        results.push({ id: profile['Record ID'], success: true });
       }
+
+      console.log('Successfully updated all contacts in HubSpot');
 
       return new Response(
         JSON.stringify({
           success: true,
           summary: {
-            updated: profiles?.length || 0,
+            updated: results.length,
           }
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

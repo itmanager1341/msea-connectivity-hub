@@ -37,7 +37,7 @@ const AdminPortal = () => {
   const [editingMember, setEditingMember] = useState<any>(null);
   const { toast } = useToast();
 
-  // Fetch sync preferences
+  // Update sync preferences query to use maybeSingle
   const { data: syncPrefs, refetch: refetchSyncPrefs } = useQuery({
     queryKey: ['sync-preferences'],
     queryFn: async () => {
@@ -45,7 +45,7 @@ const AdminPortal = () => {
       const { data, error } = await supabase
         .from('sync_preferences')
         .select('*')
-        .single();
+        .maybeSingle();
       
       if (error) {
         console.error('Error fetching sync preferences:', error);
@@ -118,30 +118,55 @@ const AdminPortal = () => {
 
   const handleSaveMember = async () => {
     try {
-      console.log('Saving member data:', editingMember);
+      if (!editingMember) {
+        console.error('No member data to save');
+        return;
+      }
       
-      // Update the profile in Supabase
-      const { error: updateError } = await supabase
+      console.log('Attempting to save member data:', editingMember);
+      
+      // First verify the profile exists
+      const { data: existingProfile, error: fetchError } = await supabase
         .from('profiles')
-        .update({
-          "First Name": editingMember["First Name"],
-          "Last Name": editingMember["Last Name"],
-          "Full Name": `${editingMember["First Name"]} ${editingMember["Last Name"]}`.trim(),
-          "Email": editingMember["Email"],
-          "Phone Number": editingMember["Phone Number"],
-          "Company Name": editingMember["Company Name"],
-          "LinkedIn": editingMember["LinkedIn"]
-        })
-        .eq('Record ID', editingMember['Record ID']);
+        .select('*')
+        .eq('Record ID', editingMember['Record ID'])
+        .single();
+
+      if (fetchError) {
+        console.error('Error fetching existing profile:', fetchError);
+        throw fetchError;
+      }
+
+      console.log('Existing profile:', existingProfile);
+
+      // Update the profile in Supabase with explicit column names
+      const updateData = {
+        "First Name": editingMember["First Name"],
+        "Last Name": editingMember["Last Name"],
+        "Full Name": `${editingMember["First Name"]} ${editingMember["Last Name"]}`.trim(),
+        "Email": editingMember["Email"],
+        "Phone Number": editingMember["Phone Number"],
+        "Company Name": editingMember["Company Name"],
+        "LinkedIn": editingMember["LinkedIn"]
+      };
+
+      console.log('Updating profile with data:', updateData);
+
+      const { data: updatedProfile, error: updateError } = await supabase
+        .from('profiles')
+        .update(updateData)
+        .eq('Record ID', editingMember['Record ID'])
+        .select()
+        .single();
 
       if (updateError) {
         console.error('Error updating profile:', updateError);
         throw updateError;
       }
 
-      console.log('Profile updated in Supabase');
+      console.log('Profile updated in Supabase:', updatedProfile);
 
-      // If two-way sync is enabled, sync to HubSpot
+      // Check sync preferences and sync to HubSpot if enabled
       if (syncPrefs?.two_way_sync) {
         console.log('Two-way sync is enabled, syncing to HubSpot...');
         const response = await supabase.functions.invoke('sync-hubspot', {
@@ -151,12 +176,19 @@ const AdminPortal = () => {
           }
         });
 
-        if (!response.data.success) {
-          throw new Error(response.data.error || 'Sync to HubSpot failed');
+        console.log('HubSpot sync response:', response);
+
+        if (!response.data?.success) {
+          throw new Error(response.data?.error || 'Sync to HubSpot failed');
         }
         console.log('Synced to HubSpot successfully');
+      } else {
+        console.log('Two-way sync is disabled, skipping HubSpot sync');
       }
 
+      // Refresh the data
+      refetch();
+      
       toast({
         title: "Member Updated",
         description: syncPrefs?.two_way_sync 
@@ -165,7 +197,6 @@ const AdminPortal = () => {
       });
 
       setEditingMember(null);
-      refetch();
     } catch (error: any) {
       console.error('Update error:', error);
       toast({
