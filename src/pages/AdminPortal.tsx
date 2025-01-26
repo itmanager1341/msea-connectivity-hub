@@ -166,23 +166,22 @@ const AdminPortal = () => {
       
       console.log('Attempting to save member data:', editingMember);
       
-      // Convert record_id to number and verify the profile exists
-      const recordId = parseInt(editingMember.record_id.toString());
-      console.log('Looking up profile with record_id:', recordId);
-      
+      // First, verify the profile exists
       const { data: existingProfile, error: fetchError } = await supabase
-        .rpc('get_profile_by_record_id', { record_id_param: recordId }) as { 
-          data: Profile[] | null;
-          error: any;
-        };
+        .from('profiles')
+        .select('*')
+        .eq('record_id', editingMember.record_id)
+        .single();
+
+      console.log('Fetch result:', { existingProfile, fetchError });
 
       if (fetchError) {
         console.error('Error fetching profile:', fetchError);
         throw new Error(`Failed to verify profile: ${fetchError.message}`);
       }
 
-      if (!existingProfile || existingProfile.length === 0) {
-        throw new Error(`Profile with record_id ${recordId} not found`);
+      if (!existingProfile) {
+        throw new Error(`Profile with record_id ${editingMember.record_id} not found`);
       }
 
       // Prepare update data
@@ -205,12 +204,11 @@ const AdminPortal = () => {
 
       const { data: updatedProfile, error: updateError } = await supabase
         .rpc('update_profile_by_record_id', { 
-          record_id_param: recordId,
+          record_id_param: editingMember.record_id,
           update_data: updateData 
-        }) as {
-          data: Profile[] | null;
-          error: any;
-        };
+        });
+
+      console.log('Update result:', { updatedProfile, updateError });
 
       if (updateError) {
         console.error('Error updating profile:', updateError);
@@ -227,7 +225,7 @@ const AdminPortal = () => {
         try {
           const response = await supabase.functions.invoke('sync-hubspot', {
             body: { 
-              memberIds: [recordId],
+              memberIds: [editingMember.record_id],
               direction: 'to_hubspot'
             }
           });
