@@ -34,7 +34,9 @@ const Auth = ({ onClose }: AuthProps) => {
 
     try {
       if (isForgotPassword) {
-        const { error } = await supabase.auth.resetPasswordForEmail(email);
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
         if (error) throw error;
         toast({
           title: "Password reset email sent",
@@ -45,6 +47,9 @@ const Auth = ({ onClose }: AuthProps) => {
         const { error } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/portal`,
+          },
         });
         if (error) throw error;
         toast({

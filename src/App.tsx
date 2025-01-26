@@ -63,11 +63,8 @@ function App() {
           <Route path="/directory" element={<Directory />} />
           <Route path="/resources" element={<Resources />} />
           
-          {/* Auth routes */}
-          <Route 
-            path="/login" 
-            element={session ? <Navigate to="/portal" replace /> : <Auth />} 
-          />
+          {/* Auth routes - these should always be accessible */}
+          <Route path="/login" element={<Auth />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           
           {/* Protected routes */}
