@@ -160,11 +160,14 @@ const AdminPortal = () => {
       
       console.log('Attempting to save member data:', editingMember);
       
-      // First verify the profile exists using Record ID
+      // Convert Record ID to number and verify the profile exists
+      const recordId = parseInt(editingMember['Record ID'].toString());
+      console.log('Looking up profile with Record ID:', recordId);
+      
       const { data: existingProfile, error: fetchError } = await supabase
         .from('profiles')
         .select('*')
-        .eq('Record ID', editingMember['Record ID'])
+        .eq('Record ID', recordId)
         .maybeSingle();
 
       if (fetchError) {
@@ -173,7 +176,7 @@ const AdminPortal = () => {
       }
 
       if (!existingProfile) {
-        throw new Error(`Profile with Record ID ${editingMember['Record ID']} not found`);
+        throw new Error(`Profile with Record ID ${recordId} not found`);
       }
 
       // Prepare update data
@@ -194,11 +197,11 @@ const AdminPortal = () => {
 
       console.log('Updating profile with data:', updateData);
 
-      // Update the profile using Record ID as identifier
+      // Update the profile using Record ID as identifier (as number)
       const { data: updatedProfile, error: updateError } = await supabase
         .from('profiles')
         .update(updateData)
-        .eq('Record ID', editingMember['Record ID'])
+        .eq('Record ID', recordId)
         .select()
         .maybeSingle();
 
