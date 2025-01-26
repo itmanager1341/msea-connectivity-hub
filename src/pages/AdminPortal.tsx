@@ -530,6 +530,6 @@ const AdminPortal = () => {
       </Dialog>
     </div>
   );
-});
+};
 
 export default AdminPortal;
