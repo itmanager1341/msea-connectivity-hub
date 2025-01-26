@@ -9,6 +9,7 @@ import Resources from "./pages/Resources";
 import AdminPortal from "./pages/AdminPortal";
 import MemberPortal from "./pages/MemberPortal";
 import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
 import { supabase } from "./integrations/supabase/client";
 
 const queryClient = new QueryClient();
@@ -38,7 +39,7 @@ function App() {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       console.log("Auth state changed:", _event, session);
       setSession(session);
-      setIsLoading(false); // Make sure to set loading to false on auth state change
+      setIsLoading(false);
     });
 
     return () => subscription.unsubscribe();
@@ -48,7 +49,6 @@ function App() {
     return <div className="p-4 text-red-500">Error: {error}</div>;
   }
 
-  // Only show loading state during initial load
   if (isLoading && !session) {
     return <div className="p-4">Loading...</div>;
   }
@@ -68,6 +68,7 @@ function App() {
             path="/login" 
             element={session ? <Navigate to="/portal" replace /> : <Auth />} 
           />
+          <Route path="/reset-password" element={<ResetPassword />} />
           
           {/* Protected routes */}
           <Route
