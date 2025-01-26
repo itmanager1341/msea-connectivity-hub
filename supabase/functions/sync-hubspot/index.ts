@@ -1,6 +1,11 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+/// <reference lib="deno.ns" />
 
+// Import required dependencies for serving HTTP requests and Supabase client
+// @deno-types="https://deno.land/std@0.168.0/http/server.ts"
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+// Define CORS headers to allow cross-origin requests
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -44,7 +49,12 @@ serve(async (req) => {
         throw new Error('No profiles found to update in HubSpot');
       }
 
-      const results = [];
+      interface SyncResult {
+        id: number;
+        success: boolean;
+      }
+      const results: SyncResult[] = [];
+      
       for (const profile of profiles) {
         console.log(`Updating HubSpot contact for Record ID: ${profile['Record ID']}`);
         
