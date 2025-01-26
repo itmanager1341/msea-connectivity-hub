@@ -202,10 +202,10 @@ const AdminPortal = () => {
 
       console.log('Updating profile with data:', updateData);
 
-      // Ensure record_id is passed as a number
+      // Pass record_id as a string to match the updated function signature
       const { data: updatedProfile, error: updateError } = await supabase
         .rpc('update_profile_by_record_id', { 
-          record_id_param: Number(editingMember.record_id),
+          record_id_param: String(editingMember.record_id),
           update_data: updateData 
         });
 

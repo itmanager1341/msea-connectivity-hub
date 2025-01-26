@@ -223,15 +223,25 @@ export type Database = {
           like: unknown
         }[]
       }
-      update_profile_by_record_id: {
-        Args: {
-          record_id_param: number
-          update_data: Json
-        }
-        Returns: {
-          like: unknown
-        }[]
-      }
+      update_profile_by_record_id:
+        | {
+            Args: {
+              record_id_param: number
+              update_data: Json
+            }
+            Returns: {
+              like: unknown
+            }[]
+          }
+        | {
+            Args: {
+              record_id_param: string
+              update_data: Json
+            }
+            Returns: {
+              like: unknown
+            }[]
+          }
     }
     Enums: {
       [_ in never]: never
