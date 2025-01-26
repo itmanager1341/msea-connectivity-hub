@@ -102,9 +102,27 @@ const AdminPortal = () => {
 
       if (error) throw error;
 
+      // Check sync preferences
+      const { data: syncPrefs } = await supabase
+        .from('sync_preferences')
+        .select('two_way_sync')
+        .single();
+
+      if (syncPrefs?.two_way_sync) {
+        // If two-way sync is enabled, trigger the sync
+        await supabase.functions.invoke('sync-hubspot', {
+          body: { 
+            memberIds: [editingMember['Record ID']],
+            direction: 'to_hubspot'
+          }
+        });
+      }
+
       toast({
         title: "Member Updated",
-        description: "Member information has been successfully updated.",
+        description: syncPrefs?.two_way_sync 
+          ? "Member information has been updated and synced with HubSpot."
+          : "Member information has been updated. Note: Changes won't sync to HubSpot until two-way sync is enabled.",
       });
 
       setEditingMember(null);
@@ -335,6 +353,17 @@ const AdminPortal = () => {
                 id="company"
                 value={editingMember?.["Company Name"] || ""}
                 onChange={(e) => setEditingMember(prev => ({ ...prev, "Company Name": e.target.value }))}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="linkedin" className="text-right">
+                LinkedIn
+              </Label>
+              <Input
+                id="linkedin"
+                value={editingMember?.["LinkedIn"] || ""}
+                onChange={(e) => setEditingMember(prev => ({ ...prev, "LinkedIn": e.target.value }))}
                 className="col-span-3"
               />
             </div>
