@@ -4,6 +4,21 @@
 
 **URL**: https://lovable.dev/projects/c97f4342-a8e5-4851-9406-03907e2bf3a8
 
+## Package Manager
+
+This project standardizes on npm as the package manager. Please do not use alternative package managers (like Bun or Yarn) to ensure consistency across development environments and CI/CD pipelines.
+
+```bash
+# Install dependencies
+npm install
+
+# Run development server
+npm run dev
+
+# Build for production
+npm run build
+```
+
 ## How can I edit this code?
 
 There are several ways of editing your application.
