@@ -4,14 +4,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { X } from "lucide-react";
+import { X, LogIn, User, Key, Lock } from "lucide-react";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 
 interface AuthProps {
@@ -23,6 +24,7 @@ const Auth = ({ onClose }: AuthProps) => {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -31,7 +33,17 @@ const Auth = ({ onClose }: AuthProps) => {
     setIsLoading(true);
 
     try {
-      if (isSignUp) {
+      if (isForgotPassword) {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+        if (error) throw error;
+        toast({
+          title: "Password reset email sent",
+          description: "Check your email for the reset link",
+        });
+        setIsForgotPassword(false);
+      } else if (isSignUp) {
         const { error } = await supabase.auth.signUp({
           email,
           password,
@@ -46,7 +58,12 @@ const Auth = ({ onClose }: AuthProps) => {
           email,
           password,
         });
-        if (error) throw error;
+        if (error) {
+          if (error.message.includes("Invalid login credentials")) {
+            throw new Error("Invalid email or password");
+          }
+          throw error;
+        }
         navigate("/portal");
       }
     } catch (error: any) {
@@ -60,72 +77,126 @@ const Auth = ({ onClose }: AuthProps) => {
     }
   };
 
-  return (
-    <Card className="relative">
-      {onClose && (
-        <button
-          onClick={onClose}
-          className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-        >
-          <X className="h-4 w-4" />
-          <span className="sr-only">Close</span>
-        </button>
-      )}
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold">
-          {isSignUp ? "Create an account" : "Welcome back"}
-        </CardTitle>
-        <CardDescription>
-          {isSignUp
-            ? "Enter your email and password to create your account"
-            : "Enter your email and password to login"}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+  const renderForm = () => {
+    if (isForgotPassword) {
+      return (
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
+            <div className="relative">
+              <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <Input
+                id="email"
+                type="email"
+                className="pl-10"
+                placeholder="m@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+          </div>
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? "Sending..." : "Send Reset Link"}
+          </Button>
+          <button
+            type="button"
+            onClick={() => setIsForgotPassword(false)}
+            className="text-sm text-blue-600 hover:underline"
+          >
+            Back to login
+          </button>
+        </form>
+      );
+    }
+
+    return (
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="email">Email</Label>
+          <div className="relative">
+            <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
             <Input
               id="email"
               type="email"
+              className="pl-10"
               placeholder="m@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="password">Password</Label>
+          <div className="relative">
+            <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
             <Input
               id="password"
               type="password"
+              className="pl-10"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
             />
           </div>
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading
-              ? "Loading..."
-              : isSignUp
-              ? "Create account"
-              : "Sign in"}
-          </Button>
-        </form>
+        </div>
+        <Button type="submit" className="w-full" disabled={isLoading}>
+          {isLoading ? "Loading..." : isSignUp ? "Create account" : "Sign in"}
+        </Button>
 
-        <div className="mt-4 text-center">
+        <div className="mt-4 text-center space-y-2">
           <button
             type="button"
             onClick={() => setIsSignUp(!isSignUp)}
-            className="text-sm text-blue-600 hover:underline"
+            className="text-sm text-blue-600 hover:underline block w-full"
           >
             {isSignUp
               ? "Already have an account? Sign in"
               : "Don't have an account? Sign up"}
           </button>
+          {!isSignUp && (
+            <button
+              type="button"
+              onClick={() => setIsForgotPassword(true)}
+              className="text-sm text-blue-600 hover:underline block w-full"
+            >
+              Forgot password?
+            </button>
+          )}
         </div>
-      </CardContent>
-    </Card>
+      </form>
+    );
+  };
+
+  return (
+    <Sheet>
+      <SheetTrigger asChild>
+        <Button variant="outline" size="sm">
+          <LogIn className="mr-2 h-4 w-4" />
+          Login
+        </Button>
+      </SheetTrigger>
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>
+            {isForgotPassword
+              ? "Reset Password"
+              : isSignUp
+              ? "Create an account"
+              : "Welcome back"}
+          </SheetTitle>
+          <SheetDescription>
+            {isForgotPassword
+              ? "Enter your email to receive a password reset link"
+              : isSignUp
+              ? "Enter your email and password to create your account"
+              : "Enter your email and password to login"}
+          </SheetDescription>
+        </SheetHeader>
+        <div className="mt-6">{renderForm()}</div>
+      </SheetContent>
+    </Sheet>
   );
 };
 
