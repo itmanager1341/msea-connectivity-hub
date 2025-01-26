@@ -15,7 +15,7 @@ const ResetPassword = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    // Check if we have an access token in the URL
+    // Check if we have an access token in the URL hash
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     const accessToken = hashParams.get("access_token");
     
@@ -26,6 +26,12 @@ const ResetPassword = () => {
         variant: "destructive",
       });
       navigate("/login");
+    } else {
+      // Set the session with the access token
+      supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: hashParams.get("refresh_token") || "",
+      });
     }
   }, [navigate, toast]);
 
