@@ -56,97 +56,97 @@ export type Database = {
       }
       profile_visibility: {
         Row: {
+          created_at: string
           id: string
           profile_id: string
-          show_email: boolean
-          show_phone: boolean
-          show_linkedin: boolean
-          created_at: string
+          show_email: boolean | null
+          show_linkedin: boolean | null
+          show_phone: boolean | null
           updated_at: string
         }
         Insert: {
+          created_at?: string
           id?: string
           profile_id: string
-          show_email?: boolean
-          show_phone?: boolean
-          show_linkedin?: boolean
-          created_at?: string
+          show_email?: boolean | null
+          show_linkedin?: boolean | null
+          show_phone?: boolean | null
           updated_at?: string
         }
         Update: {
+          created_at?: string
           id?: string
           profile_id?: string
-          show_email?: boolean
-          show_phone?: boolean
-          show_linkedin?: boolean
-          created_at?: string
+          show_email?: boolean | null
+          show_linkedin?: boolean | null
+          show_phone?: boolean | null
           updated_at?: string
         }
         Relationships: []
       }
       profiles: {
         Row: {
-          record_id: number
-          "First Name": string | null
-          "Last Name": string | null
-          "Full Name": string | null
+          active: boolean | null
+          Bio: string | null
+          City: string | null
           "Company Name": string | null
           "Create Date": string | null
           Email: string | null
           "Email Domain": string | null
-          "Profession - FSI": string | null
+          "First Name": string | null
+          "Full Name": string | null
+          Industry: string | null
           "Job Title": string | null
-          "Phone Number": string | null
-          "Bio": string | null
+          "Last Name": string | null
+          LinkedIn: string | null
           "Member Since Date": string | null
           Membership: string | null
-          Industry: string | null
+          "Phone Number": string | null
+          "Profession - FSI": string | null
+          record_id: number
           "State/Region": string | null
-          City: string | null
-          "LinkedIn": string | null
-          active: boolean | null
         }
         Insert: {
-          record_id: number
-          "First Name"?: string | null
-          "Last Name"?: string | null
-          "Full Name"?: string | null
+          active?: boolean | null
+          Bio?: string | null
+          City?: string | null
           "Company Name"?: string | null
           "Create Date"?: string | null
           Email?: string | null
           "Email Domain"?: string | null
-          "Profession - FSI"?: string | null
+          "First Name"?: string | null
+          "Full Name"?: string | null
+          Industry?: string | null
           "Job Title"?: string | null
-          "Phone Number"?: string | null
-          "Bio"?: string | null
+          "Last Name"?: string | null
+          LinkedIn?: string | null
           "Member Since Date"?: string | null
           Membership?: string | null
-          Industry?: string | null
+          "Phone Number"?: string | null
+          "Profession - FSI"?: string | null
+          record_id: number
           "State/Region"?: string | null
-          City?: string | null
-          "LinkedIn"?: string | null
-          active?: boolean | null
         }
         Update: {
-          record_id?: number
-          "First Name"?: string | null
-          "Last Name"?: string | null
-          "Full Name"?: string | null
+          active?: boolean | null
+          Bio?: string | null
+          City?: string | null
           "Company Name"?: string | null
           "Create Date"?: string | null
           Email?: string | null
           "Email Domain"?: string | null
-          "Profession - FSI"?: string | null
+          "First Name"?: string | null
+          "Full Name"?: string | null
+          Industry?: string | null
           "Job Title"?: string | null
-          "Phone Number"?: string | null
-          "Bio"?: string | null
+          "Last Name"?: string | null
+          LinkedIn?: string | null
           "Member Since Date"?: string | null
           Membership?: string | null
-          Industry?: string | null
+          "Phone Number"?: string | null
+          "Profession - FSI"?: string | null
+          record_id?: number
           "State/Region"?: string | null
-          City?: string | null
-          "LinkedIn"?: string | null
-          active?: boolean | null
         }
         Relationships: []
       }
@@ -251,7 +251,7 @@ export type Tables<
   TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
     ? keyof (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
         Database[PublicTableNameOrOptions["schema"]]["Views"])
-    : never,
+    : never = never,
 > = PublicTableNameOrOptions extends { schema: keyof Database }
   ? (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
       Database[PublicTableNameOrOptions["schema"]]["Views"])[TableName] extends {
@@ -305,10 +305,10 @@ export type TablesUpdate<
     : never
   : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
     ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
-      Update: infer U
-    }
-    ? U
-    : never
+        Update: infer U
+      }
+      ? U
+      : never
     : never
 
 export type Enums<
