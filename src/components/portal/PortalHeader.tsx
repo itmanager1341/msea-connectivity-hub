@@ -50,7 +50,9 @@ export const PortalHeader = () => {
   // Generate initials from profile data
   const getInitials = () => {
     if (profile && profile["First Name"] && profile["Last Name"]) {
-      return `${profile["First Name"][0]}${profile["Last Name"][0]}`;
+      const firstInitial = profile["First Name"].charAt(0);
+      const lastInitial = profile["Last Name"].charAt(0);
+      return firstInitial && lastInitial ? `${firstInitial}${lastInitial}` : "";
     }
     return "";
   };
@@ -88,17 +90,17 @@ export const PortalHeader = () => {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-              <Avatar className="h-8 w-8 bg-gray-100">
+              <Avatar className="h-8 w-8">
                 <AvatarImage 
                   src="/placeholder.svg" 
-                  alt={profile?.["Full Name"] || "User"} 
-                  className="bg-gray-100"
+                  alt={profile?.["Full Name"] || "User"}
+                  className="bg-primary/10"
                 />
-                <AvatarFallback className="bg-gray-100 text-gray-900">
-                  {isProfileLoading ? (
-                    <User className="h-4 w-4" />
+                <AvatarFallback className="bg-primary/10 text-primary font-medium">
+                  {!isProfileLoading && getInitials() ? (
+                    getInitials()
                   ) : (
-                    getInitials() || <User className="h-4 w-4" />
+                    <User className="h-4 w-4 text-primary" />
                   )}
                 </AvatarFallback>
               </Avatar>
