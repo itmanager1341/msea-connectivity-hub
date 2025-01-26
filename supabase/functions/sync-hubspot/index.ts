@@ -1,6 +1,41 @@
-/// <reference lib="deno.ns" />
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+interface HubSpotContact {
+  vid: number;
+  properties: Record<string, any>;
+  identities: any[];
+}
+
+interface HubSpotResponse {
+  contacts: HubSpotContact[];
+  'has-more': boolean;
+  'vid-offset': number;
+}
+
+interface SyncResult {
+  id: number;
+  success: boolean;
+}
+
+interface Profile {
+  'Record ID': number;
+  'First Name'?: string;
+  'Last Name'?: string;
+  'Full Name': string;
+  'Company Name'?: string;
+  'Membership'?: string;
+  'Email': string;
+  'Job Title'?: string;
+  'Phone Number'?: string;
+  'Industry'?: string;
+  'State/Region'?: string;
+  'City'?: string;
+  'Email Domain'?: string | null;
+  'Bio'?: string;
+  'LinkedIn'?: string;
+  'active': boolean;
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -41,7 +76,7 @@ serve(async (req) => {
         throw new Error('No profiles found to update in HubSpot');
       }
 
-      const results = [];
+      const results: SyncResult[] = [];
       
       for (const profile of profiles) {
         console.log(`Updating HubSpot contact for Record ID: ${profile['Record ID']}`);
@@ -140,9 +175,9 @@ serve(async (req) => {
       const timeout = setTimeout(() => controller.abort(), 25000)
 
       try {
-        const allContacts = []
-        let hasMore = true
-        let offset = 0
+        const allContacts: HubSpotContact[] = [];
+        let hasMore = true;
+        let offset = 0;
         const count = 100 // Increased page size for efficiency
 
         // Fetch all contacts with pagination
@@ -215,10 +250,10 @@ serve(async (req) => {
           existingProfiles?.map(profile => [profile['Record ID'], profile]) || []
         )
 
-        const updates = []
-        const inserts = []
-        let updatedCount = 0
-        let insertedCount = 0
+        const updates: Profile[] = [];
+        const inserts: Profile[] = [];
+        let updatedCount = 0;
+        let insertedCount = 0;
 
         // Create a set of current HubSpot contact IDs
         const currentHubspotIds = new Set(allContacts.map(c => parseInt(c.vid)))
@@ -233,7 +268,7 @@ serve(async (req) => {
           )?.value || properties.email?.value
 
           // Prepare profile data
-          const profileData = {
+          const profileData: Profile = {
             'Record ID': parseInt(contact.vid),
             'First Name': properties.firstname?.value,
             'Last Name': properties.lastname?.value,
