@@ -215,7 +215,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_profile_by_record_id: {
+        Args: {
+          record_id_param: number
+        }
+        Returns: {
+          like: unknown
+        }[]
+      }
+      update_profile_by_record_id: {
+        Args: {
+          record_id_param: number
+          update_data: Json
+        }
+        Returns: {
+          like: unknown
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

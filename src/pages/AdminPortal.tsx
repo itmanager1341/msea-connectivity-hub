@@ -166,14 +166,17 @@ const AdminPortal = () => {
       
       // Use rpc to query with raw SQL to avoid PostgREST column name issues
       const { data: existingProfile, error: fetchError } = await supabase
-        .rpc('get_profile_by_record_id', { record_id_param: recordId });
+        .rpc('get_profile_by_record_id', { record_id_param: recordId }) as { 
+          data: Profile[] | null;
+          error: any;
+        };
 
       if (fetchError) {
         console.error('Error fetching profile:', fetchError);
         throw new Error(`Failed to verify profile: ${fetchError.message}`);
       }
 
-      if (!existingProfile) {
+      if (!existingProfile || existingProfile.length === 0) {
         throw new Error(`Profile with Record ID ${recordId} not found`);
       }
 
@@ -199,15 +202,18 @@ const AdminPortal = () => {
       const { data: updatedProfile, error: updateError } = await supabase
         .rpc('update_profile_by_record_id', { 
           record_id_param: recordId,
-          update_data: updateData
-        });
+          update_data: updateData 
+        }) as {
+          data: Profile[] | null;
+          error: any;
+        };
 
       if (updateError) {
         console.error('Error updating profile:', updateError);
         throw updateError;
       }
 
-      if (!updatedProfile) {
+      if (!updatedProfile || updatedProfile.length === 0) {
         throw new Error('Profile update failed - no rows affected');
       }
 
@@ -217,7 +223,7 @@ const AdminPortal = () => {
         try {
           const response = await supabase.functions.invoke('sync-hubspot', {
             body: { 
-              memberIds: [updatedProfile['Record ID']],
+              memberIds: [recordId],
               direction: 'to_hubspot'
             }
           });
