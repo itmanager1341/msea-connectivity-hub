@@ -125,21 +125,25 @@ const AdminPortal = () => {
       
       console.log('Attempting to save member data:', editingMember);
       
-      // First verify the profile exists
+      // First verify the profile exists using proper column encoding
       const { data: existingProfile, error: fetchError } = await supabase
         .from('profiles')
         .select('*')
-        .eq('Record ID', editingMember['Record ID'])
-        .single();
+        .eq('"Record ID"', editingMember['Record ID'])
+        .maybeSingle();
 
       if (fetchError) {
         console.error('Error fetching existing profile:', fetchError);
         throw fetchError;
       }
 
+      if (!existingProfile) {
+        throw new Error(`Profile with Record ID ${editingMember['Record ID']} not found`);
+      }
+
       console.log('Existing profile:', existingProfile);
 
-      // Update the profile in Supabase with explicit column names
+      // Update the profile in Supabase with explicit column names and proper encoding
       const updateData = {
         "First Name": editingMember["First Name"],
         "Last Name": editingMember["Last Name"],
@@ -155,13 +159,17 @@ const AdminPortal = () => {
       const { data: updatedProfile, error: updateError } = await supabase
         .from('profiles')
         .update(updateData)
-        .eq('Record ID', editingMember['Record ID'])
+        .eq('"Record ID"', editingMember['Record ID'])
         .select()
-        .single();
+        .maybeSingle();
 
       if (updateError) {
         console.error('Error updating profile:', updateError);
         throw updateError;
+      }
+
+      if (!updatedProfile) {
+        throw new Error('Profile update failed - no rows updated');
       }
 
       console.log('Profile updated in Supabase:', updatedProfile);
