@@ -1,11 +1,7 @@
 /// <reference lib="deno.ns" />
-
-// Import required dependencies for serving HTTP requests and Supabase client
-// @deno-types="https://deno.land/std@0.168.0/http/server.ts"
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-// Define CORS headers to allow cross-origin requests
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -25,13 +21,11 @@ serve(async (req) => {
     const { memberIds, direction = 'from_hubspot', fields } = await req.json()
     console.log(`Starting HubSpot sync process... Direction: ${direction}, Member IDs:`, memberIds)
 
-    // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     if (direction === 'to_hubspot') {
-      // Sync from Supabase to HubSpot
       console.log('Fetching profiles from Supabase...');
       const { data: profiles, error: fetchError } = await supabase
         .from('profiles')
@@ -43,62 +37,90 @@ serve(async (req) => {
         throw fetchError;
       }
 
-      console.log('Profiles fetched:', profiles);
-
       if (!profiles || profiles.length === 0) {
         throw new Error('No profiles found to update in HubSpot');
       }
 
-      interface SyncResult {
-        id: number;
-        success: boolean;
-      }
-      const results: SyncResult[] = [];
+      const results = [];
       
       for (const profile of profiles) {
         console.log(`Updating HubSpot contact for Record ID: ${profile['Record ID']}`);
         
-        // Update contact in HubSpot using list-based API
-        const response = await fetch(
-          `https://api.hubapi.com/contacts/v1/contact/vid/${profile['Record ID']}/profile`,
+        // First, verify the contact exists in HubSpot using email
+        const searchResponse = await fetch(
+          `https://api.hubapi.com/contacts/v1/contact/email/${encodeURIComponent(profile['Email'])}/profile`,
           {
-            method: 'POST',
             headers: {
               'Authorization': `Bearer ${HUBSPOT_API_KEY}`,
               'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              properties: [
-                { property: 'firstname', value: profile['First Name'] },
-                { property: 'lastname', value: profile['Last Name'] },
-                { property: 'company', value: profile['Company Name'] },
-                { property: 'phone', value: profile['Phone Number'] },
-                { property: 'linkedin', value: profile['LinkedIn'] || '' }
-              ].filter(prop => !fields || fields.includes(prop.property)) // Only include specified fields
-            })
+            }
           }
         );
 
-        let responseData;
-        try {
-          responseData = await response.json();
-        } catch (e) {
-          // If response isn't JSON, get the text
-          responseData = await response.text();
+        let hubspotContact;
+        if (searchResponse.ok) {
+          hubspotContact = await searchResponse.json();
+        } else if (searchResponse.status !== 404) {
+          console.error(`Error searching HubSpot contact: ${await searchResponse.text()}`);
+          continue;
         }
-        
-        console.log(`HubSpot API response for ${profile['Record ID']}:`, responseData);
 
-        if (!response.ok) {
-          // Don't throw error, just log it and continue with other updates
-          console.error(`Failed to update HubSpot contact ${profile['Record ID']}: ${JSON.stringify(responseData)}`);
+        // Prepare properties to update
+        const properties = [
+          { property: 'firstname', value: profile['First Name'] },
+          { property: 'lastname', value: profile['Last Name'] },
+          { property: 'company', value: profile['Company Name'] },
+          { property: 'phone', value: profile['Phone Number'] },
+          { property: 'linkedin', value: profile['LinkedIn'] || '' },
+          { property: 'jobtitle', value: profile['Job Title'] },
+          { property: 'industry', value: profile['Industry'] },
+          { property: 'state', value: profile['State/Region'] },
+          { property: 'city', value: profile['City'] },
+          { property: 'bio', value: profile['Bio'] }
+        ].filter(prop => !fields || fields.includes(prop.property));
+
+        let updateResponse;
+        if (hubspotContact) {
+          // Update existing contact
+          updateResponse = await fetch(
+            `https://api.hubapi.com/contacts/v1/contact/email/${encodeURIComponent(profile['Email'])}/profile`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${HUBSPOT_API_KEY}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ properties })
+            }
+          );
+        } else {
+          // Create new contact
+          updateResponse = await fetch(
+            'https://api.hubapi.com/contacts/v1/contact/',
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${HUBSPOT_API_KEY}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                properties: [
+                  ...properties,
+                  { property: 'email', value: profile['Email'] }
+                ]
+              })
+            }
+          );
+        }
+
+        if (!updateResponse.ok) {
+          console.error(`Failed to update HubSpot contact: ${await updateResponse.text()}`);
           continue;
         }
 
         results.push({ id: profile['Record ID'], success: true });
+        console.log(`Successfully updated HubSpot contact for ${profile['Email']}`);
       }
-
-      console.log('Successfully updated all contacts in HubSpot');
 
       return new Response(
         JSON.stringify({

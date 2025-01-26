@@ -160,11 +160,11 @@ const AdminPortal = () => {
       
       console.log('Attempting to save member data:', editingMember);
       
-      // First verify the profile exists using proper column reference
+      // First verify the profile exists using email
       const { data: existingProfile, error: fetchError } = await supabase
         .from('profiles')
         .select('*')
-        .eq('Record ID', editingMember['Record ID'])
+        .eq('Email', editingMember['Email'])
         .maybeSingle();
 
       if (fetchError) {
@@ -173,7 +173,7 @@ const AdminPortal = () => {
       }
 
       if (!existingProfile) {
-        throw new Error(`Profile with Record ID ${editingMember['Record ID']} not found`);
+        throw new Error(`Profile with email ${editingMember['Email']} not found`);
       }
 
       // Prepare update data
@@ -184,16 +184,21 @@ const AdminPortal = () => {
         "Email": editingMember["Email"],
         "Phone Number": editingMember["Phone Number"],
         "Company Name": editingMember["Company Name"],
-        "LinkedIn": editingMember["LinkedIn"] || null // Ensure null if empty
+        "Job Title": editingMember["Job Title"],
+        "Industry": editingMember["Industry"],
+        "State/Region": editingMember["State/Region"],
+        "City": editingMember["City"],
+        "Bio": editingMember["Bio"],
+        "LinkedIn": editingMember["LinkedIn"] || null
       };
 
       console.log('Updating profile with data:', updateData);
 
-      // Update the profile using proper column reference
+      // Update the profile using email as identifier
       const { data: updatedProfile, error: updateError } = await supabase
         .from('profiles')
         .update(updateData)
-        .eq('Record ID', editingMember['Record ID'])
+        .eq('Email', editingMember['Email'])
         .select()
         .maybeSingle();
 
@@ -214,9 +219,8 @@ const AdminPortal = () => {
         try {
           const response = await supabase.functions.invoke('sync-hubspot', {
             body: { 
-              memberIds: [editingMember['Record ID']],
-              direction: 'to_hubspot',
-              fields: ['firstname', 'lastname', 'email', 'phone', 'company', 'linkedin'] // Explicitly specify fields
+              memberIds: [updatedProfile['Record ID']],
+              direction: 'to_hubspot'
             }
           });
 
