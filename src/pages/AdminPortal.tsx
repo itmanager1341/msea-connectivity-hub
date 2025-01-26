@@ -54,17 +54,10 @@ interface SyncPreferences {
   last_sync_timestamp: string | null;
 }
 
-type SortableFields = keyof Pick<Profile, 
-  | "Full Name" 
-  | "Company Name" 
-  | "Email" 
-  | "Phone Number" 
-  | "Membership" 
-  | "active"
->;
+type SortableField = "Full Name" | "Company Name" | "Email" | "Phone Number" | "Membership" | "active";
 
 interface SortConfig {
-  key: SortableFields;
+  key: SortableField;
   direction: 'asc' | 'desc';
 }
 
@@ -116,7 +109,7 @@ const AdminPortal = () => {
     }
   });
 
-  const handleSort = (key: SortableFields) => {
+  const handleSort = (key: SortableField) => {
     setSortConfig(current => ({
       key,
       direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc'
@@ -166,20 +159,16 @@ const AdminPortal = () => {
       
       console.log('Attempting to save member data:', editingMember);
       
-      // First verify the profile exists
+      // First verify the profile exists using proper column reference
       const { data: existingProfile, error: fetchError } = await supabase
         .from('profiles')
-        .select('*')
+        .select()
         .eq('Record ID', editingMember['Record ID'])
-        .maybeSingle();
+        .single();
 
       if (fetchError) {
         console.error('Error fetching profile:', fetchError);
         throw new Error(`Failed to verify profile: ${fetchError.message}`);
-      }
-
-      if (!existingProfile) {
-        throw new Error(`Profile with Record ID ${editingMember['Record ID']} not found`);
       }
 
       // Prepare update data
@@ -195,21 +184,17 @@ const AdminPortal = () => {
 
       console.log('Updating profile with data:', updateData);
 
-      // Update the profile
+      // Update the profile using proper column reference
       const { data: updatedProfile, error: updateError } = await supabase
         .from('profiles')
         .update(updateData)
         .eq('Record ID', editingMember['Record ID'])
         .select()
-        .maybeSingle();
+        .single();
 
       if (updateError) {
         console.error('Error updating profile:', updateError);
         throw updateError;
-      }
-
-      if (!updatedProfile) {
-        throw new Error('Profile update failed - no rows updated');
       }
 
       console.log('Profile updated in Supabase:', updatedProfile);
@@ -221,8 +206,7 @@ const AdminPortal = () => {
           const response = await supabase.functions.invoke('sync-hubspot', {
             body: { 
               memberIds: [editingMember['Record ID']],
-              direction: 'to_hubspot',
-              data: updateData
+              direction: 'to_hubspot'
             }
           });
 
