@@ -216,10 +216,6 @@ const AdminPortal = () => {
         throw updateError;
       }
 
-      if (!updatedProfile || (Array.isArray(updatedProfile) && updatedProfile.length === 0)) {
-        throw new Error('Profile update failed - no rows affected');
-      }
-
       // Handle HubSpot sync if enabled
       if (syncPrefs?.two_way_sync) {
         console.log('Two-way sync is enabled, syncing to HubSpot...');
