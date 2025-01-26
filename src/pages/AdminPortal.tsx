@@ -164,11 +164,9 @@ const AdminPortal = () => {
       const recordId = parseInt(editingMember['Record ID'].toString());
       console.log('Looking up profile with Record ID:', recordId);
       
+      // Use rpc to query with raw SQL to avoid PostgREST column name issues
       const { data: existingProfile, error: fetchError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('Record ID', recordId)
-        .maybeSingle();
+        .rpc('get_profile_by_record_id', { record_id_param: recordId });
 
       if (fetchError) {
         console.error('Error fetching profile:', fetchError);
@@ -197,13 +195,12 @@ const AdminPortal = () => {
 
       console.log('Updating profile with data:', updateData);
 
-      // Update the profile using Record ID as identifier (as number)
+      // Use rpc to update with raw SQL to avoid PostgREST column name issues
       const { data: updatedProfile, error: updateError } = await supabase
-        .from('profiles')
-        .update(updateData)
-        .eq('Record ID', recordId)
-        .select()
-        .maybeSingle();
+        .rpc('update_profile_by_record_id', { 
+          record_id_param: recordId,
+          update_data: updateData
+        });
 
       if (updateError) {
         console.error('Error updating profile:', updateError);
@@ -213,8 +210,6 @@ const AdminPortal = () => {
       if (!updatedProfile) {
         throw new Error('Profile update failed - no rows affected');
       }
-
-      console.log('Profile updated in Supabase:', updatedProfile);
 
       // Handle HubSpot sync if enabled
       if (syncPrefs?.two_way_sync) {
