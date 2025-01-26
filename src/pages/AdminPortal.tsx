@@ -163,13 +163,17 @@ const AdminPortal = () => {
       // First verify the profile exists using proper column reference
       const { data: existingProfile, error: fetchError } = await supabase
         .from('profiles')
-        .select()
+        .select('*')
         .eq('Record ID', editingMember['Record ID'])
-        .single();
+        .maybeSingle();
 
       if (fetchError) {
         console.error('Error fetching profile:', fetchError);
         throw new Error(`Failed to verify profile: ${fetchError.message}`);
+      }
+
+      if (!existingProfile) {
+        throw new Error(`Profile with Record ID ${editingMember['Record ID']} not found`);
       }
 
       // Prepare update data
@@ -191,11 +195,15 @@ const AdminPortal = () => {
         .update(updateData)
         .eq('Record ID', editingMember['Record ID'])
         .select()
-        .single();
+        .maybeSingle();
 
       if (updateError) {
         console.error('Error updating profile:', updateError);
         throw updateError;
+      }
+
+      if (!updatedProfile) {
+        throw new Error('Profile update failed - no rows affected');
       }
 
       console.log('Profile updated in Supabase:', updatedProfile);
