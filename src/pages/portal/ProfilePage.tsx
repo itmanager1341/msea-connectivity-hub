@@ -16,11 +16,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import type { Database } from "@/integrations/supabase/types";
+
+type Profile = Database["public"]["Tables"]["profiles"]["Row"];
+type ProfileVisibility = Database["public"]["Tables"]["profile_visibility"]["Row"];
 
 const ProfilePage = () => {
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState<any>(null);
+  const [formData, setFormData] = useState<Profile | null>(null);
 
   // Get current user's session
   const { data: session, isLoading: isSessionLoading } = useQuery({
@@ -121,7 +125,7 @@ const ProfilePage = () => {
     }
   };
 
-  const handleVisibilityChange = async (field: string) => {
+  const handleVisibilityChange = async (field: keyof Pick<ProfileVisibility, "show_email" | "show_phone" | "show_linkedin">) => {
     try {
       if (!session?.user?.id) return;
 
@@ -157,8 +161,6 @@ const ProfilePage = () => {
   if (!profile) {
     return <div className="flex items-center justify-center p-8">Profile not found</div>;
   }
-
-  // ... keep existing code (rest of the JSX for the profile form)
 
   return (
     <div className="container max-w-4xl py-8 space-y-8">
@@ -236,7 +238,7 @@ const ProfilePage = () => {
             </div>
             <div className="flex items-center space-x-2">
               <Switch
-                checked={visibility?.show_email}
+                checked={visibility?.show_email ?? false}
                 onCheckedChange={() => handleVisibilityChange("show_email")}
               />
               <Label>Show email to other members</Label>
@@ -251,7 +253,7 @@ const ProfilePage = () => {
             />
             <div className="flex items-center space-x-2">
               <Switch
-                checked={visibility?.show_phone}
+                checked={visibility?.show_phone ?? false}
                 onCheckedChange={() => handleVisibilityChange("show_phone")}
               />
               <Label>Show phone to other members</Label>
@@ -299,7 +301,7 @@ const ProfilePage = () => {
             />
             <div className="flex items-center space-x-2">
               <Switch
-                checked={visibility?.show_linkedin}
+                checked={visibility?.show_linkedin ?? false}
                 onCheckedChange={() => handleVisibilityChange("show_linkedin")}
               />
               <Label>Show LinkedIn to other members</Label>

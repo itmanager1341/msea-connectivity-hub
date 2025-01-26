@@ -54,6 +54,36 @@ export type Database = {
         }
         Relationships: []
       }
+      profile_visibility: {
+        Row: {
+          id: string
+          profile_id: string
+          show_email: boolean
+          show_phone: boolean
+          show_linkedin: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          profile_id: string
+          show_email?: boolean
+          show_phone?: boolean
+          show_linkedin?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          profile_id?: string
+          show_email?: boolean
+          show_phone?: boolean
+          show_linkedin?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           record_id: number
