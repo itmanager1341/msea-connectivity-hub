@@ -55,10 +55,13 @@ interface SyncPreferences {
   last_sync_timestamp: string | null;
 }
 
-type SortConfig = {
-  key: keyof Profile;
-  direction: 'asc' | 'desc';
-};
+type SortKey = keyof Profile;
+type SortDirection = 'asc' | 'desc';
+
+interface SortConfig {
+  key: SortKey;
+  direction: SortDirection;
+}
 
 const AdminPortal = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -273,17 +276,16 @@ const AdminPortal = () => {
     }
   };
 
-  const sortedProfiles = [...(profiles || [])].sort((a, b) => {
-    const aValue = String(a[sortConfig.key] ?? '').toLowerCase();
-    const bValue = String(b[sortConfig.key] ?? '').toLowerCase();
+  const sortedProfiles = [...(profiles || [])].sort((a: Profile, b: Profile) => {
+    const aValue = String(a[sortConfig.key] ?? '');
+    const bValue = String(b[sortConfig.key] ?? '');
     
-    if (sortConfig.direction === 'asc') {
-      return aValue.localeCompare(bValue);
-    }
-    return bValue.localeCompare(aValue);
+    return sortConfig.direction === 'asc' 
+      ? aValue.localeCompare(bValue)
+      : bValue.localeCompare(aValue);
   });
 
-  const filteredProfiles = sortedProfiles.filter(profile => {
+  const filteredProfiles = sortedProfiles.filter((profile: Profile) => {
     const searchLower = searchTerm.toLowerCase();
     return (
       String(profile["Full Name"])?.toLowerCase().includes(searchLower) ||
@@ -292,14 +294,6 @@ const AdminPortal = () => {
       String(profile["Membership"])?.toLowerCase().includes(searchLower)
     );
   });
-
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedMembers(filteredProfiles.map(p => p["Record ID"]));
-    } else {
-      setSelectedMembers([]);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-[#F7FAFC] p-8">
