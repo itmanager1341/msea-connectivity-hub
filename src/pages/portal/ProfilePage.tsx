@@ -66,6 +66,24 @@ const ProfilePage = () => {
         .maybeSingle();
 
       if (error) throw error;
+      
+      // If no visibility settings exist, create default settings
+      if (!data) {
+        const { data: newVisibility, error: insertError } = await supabase
+          .from("profile_visibility")
+          .insert({
+            profile_id: session.user.id,
+            show_email: false,
+            show_phone: false,
+            show_linkedin: false
+          })
+          .select()
+          .single();
+
+        if (insertError) throw insertError;
+        return newVisibility;
+      }
+
       return data;
     },
     enabled: !!session?.user?.id,
@@ -113,8 +131,6 @@ const ProfilePage = () => {
           profile_id: session.user.id,
           [field]: !visibility?.[field],
           updated_at: new Date().toISOString(),
-        }, {
-          onConflict: 'profile_id'
         });
 
       if (error) throw error;

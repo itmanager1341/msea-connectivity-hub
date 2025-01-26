@@ -58,7 +58,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
-          profile_id: string | null
+          profile_id: string
           show_email: boolean | null
           show_linkedin: boolean | null
           show_phone: boolean | null
@@ -67,7 +67,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
-          profile_id?: string | null
+          profile_id: string
           show_email?: boolean | null
           show_linkedin?: boolean | null
           show_phone?: boolean | null
@@ -76,7 +76,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
-          profile_id?: string | null
+          profile_id?: string
           show_email?: boolean | null
           show_linkedin?: boolean | null
           show_phone?: boolean | null
