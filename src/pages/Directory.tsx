@@ -7,8 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Database } from "@/integrations/supabase/types";
 
 type ViewType = "company" | "member";
+type Profile = Database['public']['Tables']['profiles']['Row'];
 
 const Directory = () => {
   const [viewType, setViewType] = useState<ViewType>("company");
@@ -30,7 +32,7 @@ const Directory = () => {
       }
 
       console.log('Profiles data received:', data);
-      return data || [];
+      return data as Profile[];
     },
     retry: 1
   });
@@ -46,7 +48,7 @@ const Directory = () => {
       // Check if it's a corporate member
       if (membership.includes('msea - corporate')) {
         if (!acc.corporate) {
-          acc.corporate = new Set();
+          acc.corporate = new Set<string>();
         }
         acc.corporate.add(profile["Company Name"]);
         console.log(`Added ${profile["Company Name"]} to corporate members`);
@@ -54,7 +56,7 @@ const Directory = () => {
       // Check if it's an industry member (has MSEA but not corporate)
       else if (membership.includes('msea')) {
         if (!acc.industry) {
-          acc.industry = new Set();
+          acc.industry = new Set<string>();
         }
         acc.industry.add(profile["Company Name"]);
         console.log(`Added ${profile["Company Name"]} to industry members`);
@@ -153,7 +155,7 @@ const Directory = () => {
                 <p className="text-gray-600">No industry members found</p>
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-                  {industryMembers.map((company) => (
+                  {industryMembers.map((company: string) => (
                     <div 
                       key={company}
                       className="bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 flex items-center justify-center h-24 text-center"
@@ -172,7 +174,7 @@ const Directory = () => {
                 <p className="text-gray-600">No corporate members found</p>
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-                  {corporateMembers.map((company) => (
+                  {corporateMembers.map((company: string) => (
                     <div 
                       key={company}
                       className="bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 flex items-center justify-center h-24 text-center"
@@ -193,7 +195,7 @@ const Directory = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {profiles.map((profile) => (
                   <div 
-                    key={profile["Record ID"]}
+                    key={profile.record_id}
                     className="bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200"
                   >
                     <h3 className="text-xl font-semibold text-gray-900 mb-2">
