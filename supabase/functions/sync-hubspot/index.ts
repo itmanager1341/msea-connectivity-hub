@@ -19,7 +19,7 @@ interface SyncResult {
 }
 
 interface Profile {
-  'Record ID': number;
+  record_id: number;
   'First Name'?: string;
   'Last Name'?: string;
   'Full Name': string;
@@ -53,7 +53,7 @@ serve(async (req) => {
       throw new Error('HUBSPOT_API_KEY is not set')
     }
 
-    const { memberIds, direction = 'from_hubspot', fields } = await req.json()
+    const { memberIds, direction = 'from_hubspot' } = await req.json()
     console.log(`Starting HubSpot sync process... Direction: ${direction}, Member IDs:`, memberIds)
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
@@ -61,29 +61,17 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     if (direction === 'to_hubspot') {
-      console.log('Fetching profiles from Supabase...');
-      const { data: profiles, error: fetchError } = await supabase
-        .from('profiles')
-        .select('*')
-        .in('Record ID', memberIds);
+      try {
+        // 1. First verify these records exist in our active list
+        const propertyParams = [
+          'firstname', 'lastname', 'email', 'company', 
+          'phone', 'jobtitle', 'industry', 'state', 
+          'city', 'bio', 'linkedin'
+        ].map(prop => `property=${prop}`).join('&');
 
-      if (fetchError) {
-        console.error('Error fetching profiles:', fetchError);
-        throw fetchError;
-      }
-
-      if (!profiles || profiles.length === 0) {
-        throw new Error('No profiles found to update in HubSpot');
-      }
-
-      const results: SyncResult[] = [];
-      
-      for (const profile of profiles) {
-        console.log(`Updating HubSpot contact for Record ID: ${profile['Record ID']}`);
-        
-        // First, verify the contact exists in HubSpot using email
-        const searchResponse = await fetch(
-          `https://api.hubapi.com/contacts/v1/contact/email/${encodeURIComponent(profile['Email'])}/profile`,
+        // Get the active members list first
+        const hubspotResponse = await fetch(
+          `https://api.hubapi.com/contactslistseg/v1/lists/3190/contacts/all?${propertyParams}`,
           {
             headers: {
               'Authorization': `Bearer ${HUBSPOT_API_KEY}`,
@@ -92,80 +80,90 @@ serve(async (req) => {
           }
         );
 
-        let hubspotContact;
-        if (searchResponse.ok) {
-          hubspotContact = await searchResponse.json();
-        } else if (searchResponse.status !== 404) {
-          console.error(`Error searching HubSpot contact: ${await searchResponse.text()}`);
-          continue;
+        if (!hubspotResponse.ok) {
+          throw new Error(`Failed to fetch active members: ${await hubspotResponse.text()}`);
         }
 
-        // Prepare properties to update
-        const properties = [
-          { property: 'firstname', value: profile['First Name'] },
-          { property: 'lastname', value: profile['Last Name'] },
-          { property: 'company', value: profile['Company Name'] },
-          { property: 'phone', value: profile['Phone Number'] },
-          { property: 'linkedin', value: profile['LinkedIn'] || '' },
-          { property: 'jobtitle', value: profile['Job Title'] },
-          { property: 'industry', value: profile['Industry'] },
-          { property: 'state', value: profile['State/Region'] },
-          { property: 'city', value: profile['City'] },
-          { property: 'bio', value: profile['Bio'] }
-        ].filter(prop => !fields || fields.includes(prop.property));
+        const hubspotData = await hubspotResponse.json();
+        const activeVids = new Set(hubspotData.contacts.map(c => parseInt(c.vid)));
 
-        let updateResponse;
-        if (hubspotContact) {
-          // Update existing contact
-          updateResponse = await fetch(
-            `https://api.hubapi.com/contacts/v1/contact/email/${encodeURIComponent(profile['Email'])}/profile`,
-            {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${HUBSPOT_API_KEY}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ properties })
+        // 2. Get profiles to update from Supabase
+        const { data: profiles, error: fetchError } = await supabase
+          .from('profiles')
+          .select('*')
+          .in('record_id', memberIds)
+          .filter('record_id', 'in', `(${Array.from(activeVids).join(',')})`);
+
+        if (fetchError) throw fetchError;
+        if (!profiles?.length) {
+          throw new Error('No active profiles found to update');
+        }
+
+        const results = [];
+        
+        // 3. Update only active members
+        for (const profile of profiles) {
+          try {
+            const properties = [
+              { property: 'firstname', value: profile['First Name'] },
+              { property: 'lastname', value: profile['Last Name'] },
+              { property: 'company', value: profile['Company Name'] },
+              { property: 'phone', value: profile['Phone Number'] },
+              { property: 'jobtitle', value: profile['Job Title'] },
+              { property: 'industry', value: profile['Industry'] },
+              { property: 'state', value: profile['State/Region'] },
+              { property: 'city', value: profile['City'] },
+              { property: 'bio', value: profile['Bio'] },
+              { property: 'linkedin', value: profile['LinkedIn'] }
+            ];
+
+            const response = await fetch(
+              `https://api.hubapi.com/contacts/v1/contact/vid/${profile.record_id}/profile`,
+              {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${HUBSPOT_API_KEY}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ properties })
+              }
+            );
+
+            if (!response.ok) {
+              throw new Error(`HubSpot update failed: ${await response.text()}`);
             }
-          );
-        } else {
-          // Create new contact
-          updateResponse = await fetch(
-            'https://api.hubapi.com/contacts/v1/contact/',
-            {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${HUBSPOT_API_KEY}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                properties: [
-                  ...properties,
-                  { property: 'email', value: profile['Email'] }
-                ]
-              })
-            }
-          );
-        }
 
-        if (!updateResponse.ok) {
-          console.error(`Failed to update HubSpot contact: ${await updateResponse.text()}`);
-          continue;
-        }
-
-        results.push({ id: profile['Record ID'], success: true });
-        console.log(`Successfully updated HubSpot contact for ${profile['Email']}`);
-      }
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          summary: {
-            updated: results.length,
+            results.push({ id: profile.record_id, success: true });
+            console.log(`Successfully updated HubSpot contact VID ${profile.record_id}`);
+          } catch (error) {
+            console.error(`Failed to update HubSpot contact VID ${profile.record_id}:`, error);
+            results.push({ id: profile.record_id, success: false });
           }
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+        }
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            summary: {
+              updated: results.filter(r => r.success).length,
+              failed: results.filter(r => !r.success).length
+            }
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (error) {
+        console.error('Sync error:', error);
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: error.message
+          }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 500
+          }
+        );
+      }
     } else {
       // Sync from HubSpot to Supabase
       console.log('Starting sync from HubSpot to Supabase...');
@@ -269,7 +267,7 @@ serve(async (req) => {
 
           // Prepare profile data
           const profileData: Profile = {
-            'Record ID': parseInt(contact.vid),
+            record_id: parseInt(contact.vid),
             'First Name': properties.firstname?.value,
             'Last Name': properties.lastname?.value,
             'Full Name': `${properties.firstname?.value || ''} ${properties.lastname?.value || ''}`.trim(),
