@@ -24,7 +24,6 @@ import {
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 
-// Define strict types for our data structures
 interface Profile {
   "Record ID": number;
   "First Name": string | null;
@@ -117,7 +116,7 @@ const AdminPortal = () => {
     }
   });
 
-  const handleSort = (key: keyof Profile) => {
+  const handleSort = (key: SortableFields) => {
     setSortConfig(current => ({
       key,
       direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc'
@@ -167,7 +166,6 @@ const AdminPortal = () => {
       
       console.log('Attempting to save member data:', editingMember);
       
-      // First update in Supabase
       const updateData = {
         "First Name": editingMember["First Name"],
         "Last Name": editingMember["Last Name"],
@@ -196,7 +194,6 @@ const AdminPortal = () => {
 
       console.log('Profile updated in Supabase:', updatedProfile);
 
-      // If two-way sync is enabled, sync to HubSpot
       if (syncPrefs?.two_way_sync) {
         console.log('Two-way sync is enabled, syncing to HubSpot...');
         try {
@@ -210,12 +207,11 @@ const AdminPortal = () => {
           console.log('HubSpot sync response:', response);
 
           if (!response.data?.success) {
-            // If HubSpot sync fails, we should still keep the Supabase changes
             console.error('HubSpot sync failed:', response.data?.error);
             toast({
               title: "Partial Update",
               description: "Member information updated locally, but HubSpot sync failed. Changes will sync on next automatic sync.",
-              variant: "warning",
+              variant: "destructive",
             });
           } else {
             console.log('Synced to HubSpot successfully');
@@ -229,7 +225,7 @@ const AdminPortal = () => {
           toast({
             title: "Partial Update",
             description: "Member information updated locally, but HubSpot sync failed. Changes will sync on next automatic sync.",
-            variant: "warning",
+            variant: "destructive",
           });
         }
       } else {
@@ -534,6 +530,6 @@ const AdminPortal = () => {
       </Dialog>
     </div>
   );
-};
+});
 
 export default AdminPortal;
