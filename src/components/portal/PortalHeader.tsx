@@ -26,7 +26,7 @@ export const PortalHeader = () => {
     },
   });
 
-  const { data: profile } = useQuery({
+  const { data: profile, isLoading: isProfileLoading } = useQuery({
     queryKey: ["profile", session?.user?.email],
     queryFn: async () => {
       if (!session?.user?.email) throw new Error("No user email found");
@@ -45,6 +45,14 @@ export const PortalHeader = () => {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
+  };
+
+  // Generate initials from profile data
+  const getInitials = () => {
+    if (profile && profile["First Name"] && profile["Last Name"]) {
+      return `${profile["First Name"][0]}${profile["Last Name"][0]}`;
+    }
+    return "";
   };
 
   return (
@@ -80,13 +88,17 @@ export const PortalHeader = () => {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-              <Avatar className="h-8 w-8">
-                <AvatarImage src="/placeholder.svg" alt={profile?.["Full Name"] || "User"} />
-                <AvatarFallback>
-                  {profile ? (
-                    `${profile["First Name"]?.[0] || ""}${profile["Last Name"]?.[0] || ""}`
-                  ) : (
+              <Avatar className="h-8 w-8 bg-gray-100">
+                <AvatarImage 
+                  src="/placeholder.svg" 
+                  alt={profile?.["Full Name"] || "User"} 
+                  className="bg-gray-100"
+                />
+                <AvatarFallback className="bg-gray-100 text-gray-900">
+                  {isProfileLoading ? (
                     <User className="h-4 w-4" />
+                  ) : (
+                    getInitials() || <User className="h-4 w-4" />
                   )}
                 </AvatarFallback>
               </Avatar>
