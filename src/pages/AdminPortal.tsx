@@ -55,8 +55,24 @@ interface SyncPreferences {
   last_sync_timestamp: string | null;
 }
 
+// Define sortable fields explicitly to avoid type recursion
+type SortableFields = 
+  | "Last Name" 
+  | "Full Name" 
+  | "Company Name" 
+  | "Email" 
+  | "Membership" 
+  | "Phone Number"
+  | "Job Title"
+  | "Industry"
+  | "State/Region"
+  | "City"
+  | "Create Date"
+  | "Member Since Date"
+  | "active";
+
 type SortConfig = {
-  key: keyof Profile;
+  key: SortableFields;
   direction: 'asc' | 'desc';
 };
 
@@ -105,7 +121,7 @@ const AdminPortal = () => {
     }
   });
 
-  const handleSort = (key: keyof Profile) => {
+  const handleSort = (key: SortableFields) => {
     setSortConfig(current => ({
       key,
       direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc'
@@ -155,23 +171,7 @@ const AdminPortal = () => {
       
       console.log('Attempting to save member data:', editingMember);
       
-      const { data: existingProfile, error: fetchError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('"Record ID"', editingMember['Record ID'])
-        .maybeSingle();
-
-      if (fetchError) {
-        console.error('Error fetching existing profile:', fetchError);
-        throw fetchError;
-      }
-
-      if (!existingProfile) {
-        throw new Error(`Profile with Record ID ${editingMember['Record ID']} not found`);
-      }
-
-      console.log('Existing profile:', existingProfile);
-
+      // First update in Supabase
       const updateData = {
         "First Name": editingMember["First Name"],
         "Last Name": editingMember["Last Name"],
@@ -182,14 +182,12 @@ const AdminPortal = () => {
         "LinkedIn": editingMember["LinkedIn"]
       };
 
-      console.log('Updating profile with data:', updateData);
-
       const { data: updatedProfile, error: updateError } = await supabase
         .from('profiles')
         .update(updateData)
         .eq('"Record ID"', editingMember['Record ID'])
         .select()
-        .maybeSingle();
+        .single();
 
       if (updateError) {
         console.error('Error updating profile:', updateError);
@@ -202,37 +200,54 @@ const AdminPortal = () => {
 
       console.log('Profile updated in Supabase:', updatedProfile);
 
+      // If two-way sync is enabled, sync to HubSpot
       if (syncPrefs?.two_way_sync) {
         console.log('Two-way sync is enabled, syncing to HubSpot...');
-        const response = await supabase.functions.invoke('sync-hubspot', {
-          body: { 
-            memberIds: [editingMember['Record ID']],
-            direction: 'to_hubspot'
+        try {
+          const response = await supabase.functions.invoke('sync-hubspot', {
+            body: { 
+              memberIds: [editingMember['Record ID']],
+              direction: 'to_hubspot'
+            }
+          });
+
+          console.log('HubSpot sync response:', response);
+
+          if (!response.data?.success) {
+            // If HubSpot sync fails, we should still keep the Supabase changes
+            console.error('HubSpot sync failed:', response.data?.error);
+            toast({
+              title: "Partial Update",
+              description: "Member information updated locally, but HubSpot sync failed. Changes will sync on next automatic sync.",
+              variant: "warning",
+            });
+          } else {
+            console.log('Synced to HubSpot successfully');
+            toast({
+              title: "Member Updated",
+              description: "Member information has been updated and synced with HubSpot.",
+            });
           }
-        });
-
-        console.log('HubSpot sync response:', response);
-
-        if (!response.data?.success) {
-          throw new Error(response.data?.error || 'Sync to HubSpot failed');
+        } catch (syncError: any) {
+          console.error('Error during HubSpot sync:', syncError);
+          toast({
+            title: "Partial Update",
+            description: "Member information updated locally, but HubSpot sync failed. Changes will sync on next automatic sync.",
+            variant: "warning",
+          });
         }
-        console.log('Synced to HubSpot successfully');
       } else {
         console.log('Two-way sync is disabled, skipping HubSpot sync');
+        toast({
+          title: "Member Updated",
+          description: "Member information has been updated. Note: Changes won't sync to HubSpot until two-way sync is enabled.",
+        });
       }
 
       refetch();
-      
-      toast({
-        title: "Member Updated",
-        description: syncPrefs?.two_way_sync 
-          ? "Member information has been updated and synced with HubSpot."
-          : "Member information has been updated. Note: Changes won't sync to HubSpot until two-way sync is enabled.",
-      });
-
       setEditingMember(null);
     } catch (error: any) {
-      console.error('Update error:', error);
+      console.error('Save error:', error);
       toast({
         title: "Update Failed",
         description: error.message,
