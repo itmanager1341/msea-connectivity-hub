@@ -23,38 +23,10 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import type { Database } from "@/integrations/supabase/types";
 
-// Updated Profile type to match database schema
-type Profile = {
-  record_id: number;
-  "First Name": string | null;
-  "Last Name": string | null;
-  "Full Name": string | null;
-  "Company Name": string | null;
-  "Membership": string | null;
-  "Email": string | null;
-  "Job Title": string | null;
-  "Profession - FSI": string | null;
-  "Phone Number": string | null;
-  "Create Date": string | null;
-  "Industry": string | null;
-  "State/Region": string | null;
-  "City": string | null;
-  "Email Domain": string | null;
-  "Bio": string | null;
-  "Member Since Date": string | null;
-  "LinkedIn": string | null;
-  active: boolean | null;
-};
-
-type SyncPreferences = {
-  id: string;
-  two_way_sync: boolean | null;
-  updated_at: string | null;
-  updated_by: string | null;
-  last_sync_timestamp: string | null;
-};
-
+type Profile = Database["public"]["Tables"]["profiles"]["Row"];
+type SyncPreferences = Database["public"]["Tables"]["sync_preferences"]["Row"];
 type SortableField = "Full Name" | "Company Name" | "Email" | "Phone Number" | "Membership" | "active";
 
 type SortConfig = {
@@ -166,7 +138,7 @@ const AdminPortal = () => {
       
       console.log('Attempting to save member data:', editingMember);
       
-      // First, verify the profile exists
+      // First, verify the profile exists using record_id
       const { data: existingProfile, error: fetchError } = await supabase
         .from('profiles')
         .select('*')
@@ -202,7 +174,7 @@ const AdminPortal = () => {
 
       console.log('Updating profile with data:', updateData);
 
-      // Pass record_id as a string to match the updated function signature
+      // Call the RPC function with record_id as string
       const { data: updatedProfile, error: updateError } = await supabase
         .rpc('update_profile_by_record_id', { 
           record_id_param: String(editingMember.record_id),
