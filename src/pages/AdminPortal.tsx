@@ -104,7 +104,7 @@ const AdminPortal = () => {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .order('"Last Name"', { ascending: true });
+        .order('Last Name', { ascending: true });
 
       if (error) {
         console.error('Error fetching profiles:', error);
@@ -166,6 +166,23 @@ const AdminPortal = () => {
       
       console.log('Attempting to save member data:', editingMember);
       
+      // First verify the profile exists
+      const { data: existingProfile, error: fetchError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('Record ID', editingMember['Record ID'])
+        .maybeSingle();
+
+      if (fetchError) {
+        console.error('Error fetching profile:', fetchError);
+        throw new Error(`Failed to verify profile: ${fetchError.message}`);
+      }
+
+      if (!existingProfile) {
+        throw new Error(`Profile with Record ID ${editingMember['Record ID']} not found`);
+      }
+
+      // Prepare update data
       const updateData = {
         "First Name": editingMember["First Name"],
         "Last Name": editingMember["Last Name"],
@@ -176,10 +193,13 @@ const AdminPortal = () => {
         "LinkedIn": editingMember["LinkedIn"]
       };
 
+      console.log('Updating profile with data:', updateData);
+
+      // Update the profile
       const { data: updatedProfile, error: updateError } = await supabase
         .from('profiles')
         .update(updateData)
-        .eq('"Record ID"', editingMember['Record ID'])
+        .eq('Record ID', editingMember['Record ID'])
         .select()
         .maybeSingle();
 
@@ -194,6 +214,7 @@ const AdminPortal = () => {
 
       console.log('Profile updated in Supabase:', updatedProfile);
 
+      // Handle HubSpot sync if enabled
       if (syncPrefs?.two_way_sync) {
         console.log('Two-way sync is enabled, syncing to HubSpot...');
         try {
@@ -212,7 +233,7 @@ const AdminPortal = () => {
             toast({
               title: "Partial Update",
               description: "Member information updated locally, but HubSpot sync failed. Changes will sync on next automatic sync.",
-              variant: "destructive",
+              variant: "warning",
             });
           } else {
             console.log('Synced to HubSpot successfully');
@@ -226,7 +247,7 @@ const AdminPortal = () => {
           toast({
             title: "Partial Update",
             description: "Member information updated locally, but HubSpot sync failed. Changes will sync on next automatic sync.",
-            variant: "destructive",
+            variant: "warning",
           });
         }
       } else {

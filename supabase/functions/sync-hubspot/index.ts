@@ -48,7 +48,7 @@ serve(async (req) => {
       for (const profile of profiles) {
         console.log(`Updating HubSpot contact for Record ID: ${profile['Record ID']}`);
         
-        // Update contact in HubSpot
+        // Update contact in HubSpot using list-based API
         const response = await fetch(
           `https://api.hubapi.com/contacts/v1/contact/vid/${profile['Record ID']}/profile`,
           {
@@ -69,11 +69,37 @@ serve(async (req) => {
           }
         );
 
-        const responseText = await response.text();
-        console.log(`HubSpot API response for ${profile['Record ID']}:`, responseText);
+        let responseData;
+        try {
+          responseData = await response.json();
+        } catch (e) {
+          // If response isn't JSON, get the text
+          responseData = await response.text();
+        }
+        
+        console.log(`HubSpot API response for ${profile['Record ID']}:`, responseData);
 
         if (!response.ok) {
-          throw new Error(`Failed to update HubSpot contact: ${responseText}`);
+          // Don't throw error, just log it and continue with other updates
+          console.error(`Failed to update HubSpot contact ${profile['Record ID']}: ${JSON.stringify(responseData)}`);
+          continue;
+        }
+
+        // Verify the contact is still in the MSEA list
+        const listResponse = await fetch(
+          `https://api.hubapi.com/contacts/v1/lists/3190/contacts/all?count=1&vidOffset=${profile['Record ID']}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${HUBSPOT_API_KEY}`,
+              'Content-Type': 'application/json',
+            }
+          }
+        );
+
+        const listData = await listResponse.json();
+        if (!listData.contacts?.some(c => c.vid === profile['Record ID'])) {
+          console.warn(`Contact ${profile['Record ID']} is not in the MSEA list anymore`);
+          continue;
         }
 
         results.push({ id: profile['Record ID'], success: true });
