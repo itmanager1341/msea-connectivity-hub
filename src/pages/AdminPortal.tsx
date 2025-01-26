@@ -218,7 +218,7 @@ const AdminPortal = () => {
             toast({
               title: "Partial Update",
               description: "Member information updated locally, but HubSpot sync failed. Changes will sync on next automatic sync.",
-              variant: "warning",
+              variant: "destructive",
             });
           } else {
             console.log('Synced to HubSpot successfully');
@@ -232,7 +232,7 @@ const AdminPortal = () => {
           toast({
             title: "Partial Update",
             description: "Member information updated locally, but HubSpot sync failed. Changes will sync on next automatic sync.",
-            variant: "warning",
+            variant: "destructive",
           });
         }
       } else {
