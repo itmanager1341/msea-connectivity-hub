@@ -53,9 +53,11 @@ const Index = () => {
               Connecting mortgage servicing professionals through leadership, innovation, and excellence
             </p>
             <div className="flex justify-center gap-4">
-              <Auth />
+              <Button variant="default" size="lg" className="bg-white text-[#1A365D] hover:bg-white/90">
+                Member Login
+              </Button>
               <Link to="/about">
-                <Button variant="outline" className="text-white border-white hover:bg-white/10">
+                <Button variant="outline" size="lg" className="border-white text-white hover:bg-white/10">
                   Learn More
                 </Button>
               </Link>
