@@ -70,6 +70,7 @@ const Auth = ({ onClose }: AuthProps) => {
         navigate("/portal");
       }
     } catch (error: any) {
+      console.error("Auth error:", error);
       toast({
         title: "Error",
         description: error.message,

@@ -27,7 +27,8 @@ const ResetPassword = () => {
       
       console.log("Reset password page loaded", { 
         accessToken: accessToken ? "Found token" : "No token",
-        tokenSource: accessToken ? (hashParams.get("access_token") ? "hash" : "query") : "none"
+        tokenSource: accessToken ? (hashParams.get("access_token") ? "hash" : "query") : "none",
+        fullUrl: window.location.href
       });
 
       if (!accessToken) {
@@ -51,8 +52,12 @@ const ResetPassword = () => {
           if (error) throw error;
         } else {
           // Handle query-based token (new format)
-          // The token will be automatically handled by Supabase
-          console.log("Using query parameter token");
+          const { error } = await supabase.auth.verifyOtp({
+            token_hash: accessToken,
+            type: 'recovery'
+          });
+          if (error) throw error;
+          console.log("OTP verified successfully");
         }
         setHasToken(true);
       } catch (error: any) {
