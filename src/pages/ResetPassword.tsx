@@ -61,7 +61,7 @@ const ResetPassword = () => {
           // Handle query-based token (new format)
           const { error } = await supabase.auth.verifyOtp({
             token_hash: accessToken,
-            type: type || 'recovery'
+            type: (type as 'recovery' | 'email' | 'phone' | 'magiclink') || 'recovery'
           });
           if (error) throw error;
           console.log("OTP verified successfully");
