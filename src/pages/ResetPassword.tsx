@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,29 +9,45 @@ import { Lock } from "lucide-react";
 
 const ResetPassword = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    // Check if we have an access token in the URL hash
+    // Check for token in both URL formats
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    const accessToken = hashParams.get("access_token");
+    const queryParams = new URLSearchParams(window.location.search);
+    
+    const accessToken = hashParams.get("access_token") || queryParams.get("token");
+    const refreshToken = hashParams.get("refresh_token");
+    
+    console.log("Reset password page loaded", { accessToken, type: accessToken ? "Found token" : "No token" });
     
     if (!accessToken) {
+      console.error("No reset token found in URL");
       toast({
         title: "Error",
         description: "Invalid or missing reset token. Please request a new password reset link.",
         variant: "destructive",
       });
       navigate("/login");
-    } else {
-      // Set the session with the access token
-      supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: hashParams.get("refresh_token") || "",
-      });
+    }
+    
+    // If we have an access token, set the session
+    if (accessToken) {
+      if (refreshToken) {
+        // Handle hash-based token (old format)
+        supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+      } else {
+        // Handle query-based token (new format)
+        // The token will be automatically handled by Supabase
+        console.log("Using query parameter token");
+      }
     }
   }, [navigate, toast]);
 
@@ -52,7 +68,10 @@ const ResetPassword = () => {
         password: newPassword
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error updating password:", error);
+        throw error;
+      }
 
       toast({
         title: "Success",
@@ -63,6 +82,7 @@ const ResetPassword = () => {
       await supabase.auth.signOut();
       navigate("/login");
     } catch (error: any) {
+      console.error("Password reset error:", error);
       toast({
         title: "Error",
         description: error.message,
