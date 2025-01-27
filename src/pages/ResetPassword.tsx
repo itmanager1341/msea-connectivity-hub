@@ -19,7 +19,7 @@ const ResetPassword = () => {
     const checkToken = async () => {
       // Get the full URL for debugging
       const fullUrl = window.location.href;
-      console.log("Full URL:", fullUrl);
+      console.log("Reset password page loaded", fullUrl);
 
       // Parse both hash and query parameters
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
@@ -61,7 +61,7 @@ const ResetPassword = () => {
           // Handle query-based token (new format)
           const { error } = await supabase.auth.verifyOtp({
             token_hash: accessToken,
-            type: (type as 'recovery' | 'email' | 'phone' | 'magiclink') || 'recovery'
+            type: 'email'
           });
           if (error) throw error;
           console.log("OTP verified successfully");
