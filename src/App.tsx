@@ -8,7 +8,6 @@ import Directory from "./pages/Directory";
 import Resources from "./pages/Resources";
 import AdminPortal from "./pages/AdminPortal";
 import MemberPortal from "./pages/MemberPortal";
-import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import { supabase } from "./integrations/supabase/client";
 
@@ -62,22 +61,19 @@ function App() {
           <Route path="/about" element={<About />} />
           <Route path="/directory" element={<Directory />} />
           <Route path="/resources" element={<Resources />} />
-          
-          {/* Auth routes - these should always be accessible */}
-          <Route path="/login" element={<Auth />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           
           {/* Protected routes */}
           <Route 
             path="/admin" 
             element={
-              session ? <AdminPortal /> : <Navigate to="/login" replace />
+              session ? <AdminPortal /> : <Navigate to="/" replace />
             } 
           />
           <Route 
             path="/portal/*" 
             element={
-              session ? <MemberPortal /> : <Navigate to="/login" replace />
+              session ? <MemberPortal /> : <Navigate to="/" replace />
             } 
           />
         </Routes>

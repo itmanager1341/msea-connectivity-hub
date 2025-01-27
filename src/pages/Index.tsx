@@ -1,8 +1,8 @@
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Users, Building2, BookOpen, LogIn } from "lucide-react";
+import { Users, Building2, BookOpen } from "lucide-react";
 import { NavigationMenu, NavigationMenuItem, NavigationMenuLink, NavigationMenuList, navigationMenuTriggerStyle } from "@/components/ui/navigation-menu";
 import { Link } from "react-router-dom";
+import { Card } from "@/components/ui/card";
+import Auth from "./Auth";
 
 const Index = () => {
   return (
@@ -37,12 +37,7 @@ const Index = () => {
               </NavigationMenuList>
             </NavigationMenu>
           </div>
-          <Link to="/login">
-            <Button variant="outline" className="flex items-center gap-2">
-              <LogIn className="w-4 h-4" />
-              Member Login
-            </Button>
-          </Link>
+          <Auth />
         </div>
       </header>
 
@@ -57,11 +52,7 @@ const Index = () => {
               Connecting mortgage servicing professionals through leadership, innovation, and excellence
             </p>
             <div className="flex justify-center gap-4">
-              <Link to="/login">
-                <Button className="bg-[#C4A484] hover:bg-[#B39374] text-white">
-                  Join Our Network
-                </Button>
-              </Link>
+              <Auth />
               <Link to="/about">
                 <Button variant="outline" className="text-white border-white hover:bg-white/10">
                   Learn More
