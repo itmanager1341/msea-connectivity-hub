@@ -15,32 +15,60 @@ const ResetPassword = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    const hash = window.location.hash;
-    console.log("Reset password page loaded", window.location.href);
+    // Get the full hash fragment including the #
+    const hashFragment = window.location.hash;
+    console.log("Full URL:", window.location.href);
+    console.log("Hash fragment:", hashFragment);
     
-    // If there's no hash, the user probably navigated here directly
-    if (!hash) {
-      console.log("No hash fragment found, redirecting to login");
-      navigate("/login");
-      return;
-    }
-
-    // Parse the hash fragment
-    const hashParams = new URLSearchParams(hash.substring(1));
-    const type = hashParams.get("type");
-    const accessToken = hashParams.get("access_token");
-    
-    console.log("Token check:", { type, hasAccessToken: !!accessToken });
-
-    if (!accessToken || type !== "recovery") {
-      console.log("Invalid reset token or type");
+    if (!hashFragment) {
+      console.log("No hash fragment found");
       toast({
         title: "Error",
         description: "Invalid password reset link",
         variant: "destructive",
       });
       navigate("/login");
+      return;
     }
+
+    // Remove the # and parse the parameters
+    const params = new URLSearchParams(hashFragment.substring(1));
+    const type = params.get("type");
+    const accessToken = params.get("access_token");
+    
+    console.log("Parsed parameters:", { type, hasAccessToken: !!accessToken });
+
+    if (!accessToken || type !== "recovery") {
+      console.log("Invalid token or type:", { type, hasAccessToken: !!accessToken });
+      toast({
+        title: "Error",
+        description: "Invalid or expired password reset link",
+        variant: "destructive",
+      });
+      navigate("/login");
+      return;
+    }
+
+    // Set the access token in the session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        // If no session exists, try to create one from the access token
+        supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: params.get("refresh_token") || "",
+        }).then(({ error }) => {
+          if (error) {
+            console.error("Error setting session:", error);
+            toast({
+              title: "Error",
+              description: "Failed to validate reset token",
+              variant: "destructive",
+            });
+            navigate("/login");
+          }
+        });
+      }
+    });
   }, [navigate, toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -78,7 +106,7 @@ const ResetPassword = () => {
         description: "Your password has been reset successfully",
       });
 
-      // Sign out the user and redirect to login
+      // Sign out and redirect to login
       await supabase.auth.signOut();
       navigate("/login");
     } catch (error: any) {
