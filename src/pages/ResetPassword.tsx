@@ -16,7 +16,7 @@ const ResetPassword = () => {
 
   useEffect(() => {
     const hash = window.location.hash;
-    console.log("Hash fragment:", hash);
+    console.log("Reset password page loaded", window.location.href);
     
     // If there's no hash, the user probably navigated here directly
     if (!hash) {
@@ -28,9 +28,12 @@ const ResetPassword = () => {
     // Parse the hash fragment
     const hashParams = new URLSearchParams(hash.substring(1));
     const type = hashParams.get("type");
+    const accessToken = hashParams.get("access_token");
     
-    if (type !== "recovery") {
-      console.log("Invalid reset type:", type);
+    console.log("Token check:", { type, hasAccessToken: !!accessToken });
+
+    if (!accessToken || type !== "recovery") {
+      console.log("Invalid reset token or type");
       toast({
         title: "Error",
         description: "Invalid password reset link",
