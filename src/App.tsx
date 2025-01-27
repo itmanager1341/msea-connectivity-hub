@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Index from "./pages/Index";
@@ -67,15 +67,9 @@ function App() {
           <Route path="/login" element={<Auth />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           
-          {/* Protected routes */}
-          <Route
-            path="/admin"
-            element={session ? <AdminPortal /> : <Navigate to="/login" replace />}
-          />
-          <Route
-            path="/portal/*"
-            element={session ? <MemberPortal /> : <Navigate to="/login" replace />}
-          />
+          {/* Temporarily remove auth check for development */}
+          <Route path="/admin" element={<AdminPortal />} />
+          <Route path="/portal/*" element={<MemberPortal />} />
         </Routes>
       </Router>
       <Toaster />

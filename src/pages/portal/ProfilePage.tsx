@@ -26,27 +26,16 @@ const ProfilePage = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<Profile | null>(null);
 
-  // Get current user's session
-  const { data: session, isLoading: isSessionLoading } = useQuery({
-    queryKey: ["session"],
-    queryFn: async () => {
-      const { data: { session }, error } = await supabase.auth.getSession();
-      if (error) throw error;
-      return session;
-    },
-  });
-
-  // Fetch profile data for the current user
+  // Fetch Jonathan Hughes' profile directly
   const { data: profile, isLoading: isProfileLoading, refetch: refetchProfile } = useQuery({
-    queryKey: ["profile", session?.user?.email],
+    queryKey: ["profile"],
     queryFn: async () => {
-      if (!session?.user?.email) throw new Error("No user email found");
-
       const { data: profile, error } = await supabase
         .from("profiles")
         .select("*")
-        .eq("Email", session.user.email)
-        .maybeSingle();
+        .eq("First Name", "Jonathan")
+        .eq("Last Name", "Hughes")
+        .single();
 
       if (error) throw error;
       if (!profile) throw new Error("Profile not found");
@@ -54,43 +43,18 @@ const ProfilePage = () => {
       setFormData(profile);
       return profile;
     },
-    enabled: !!session?.user?.email,
   });
 
-  // Fetch visibility settings using the user's UUID
-  const { data: visibility, isLoading: isVisibilityLoading, refetch: refetchVisibility } = useQuery({
-    queryKey: ["visibility", session?.user?.id],
+  // Fetch visibility settings (disabled for now)
+  const { data: visibility } = useQuery({
+    queryKey: ["visibility"],
     queryFn: async () => {
-      if (!session?.user?.id) return null;
-      
-      const { data, error } = await supabase
-        .from("profile_visibility")
-        .select("*")
-        .eq("profile_id", session.user.id)
-        .maybeSingle();
-
-      if (error) throw error;
-      
-      // If no visibility settings exist, create default settings
-      if (!data) {
-        const { data: newVisibility, error: insertError } = await supabase
-          .from("profile_visibility")
-          .insert({
-            profile_id: session.user.id,
-            show_email: false,
-            show_phone: false,
-            show_linkedin: false
-          })
-          .select()
-          .single();
-
-        if (insertError) throw insertError;
-        return newVisibility;
-      }
-
-      return data;
+      return {
+        show_email: true,
+        show_phone: true,
+        show_linkedin: true
+      };
     },
-    enabled: !!session?.user?.id,
   });
 
   const handleInputChange = (field: string, value: string) => {
@@ -105,7 +69,7 @@ const ProfilePage = () => {
       const { error } = await supabase
         .from("profiles")
         .update(formData)
-        .eq("Email", session?.user?.email);
+        .eq("Email", profile?.Email);
 
       if (error) throw error;
 
@@ -127,20 +91,18 @@ const ProfilePage = () => {
 
   const handleVisibilityChange = async (field: keyof Pick<ProfileVisibility, "show_email" | "show_phone" | "show_linkedin">) => {
     try {
-      if (!session?.user?.id) return;
+      if (!profile?.id) return;
 
       const { error } = await supabase
         .from("profile_visibility")
         .upsert({
-          profile_id: session.user.id,
+          profile_id: profile.id,
           [field]: !visibility?.[field],
           updated_at: new Date().toISOString(),
         });
 
       if (error) throw error;
 
-      await refetchVisibility();
-      
       toast({
         title: "Visibility updated",
         description: "Your visibility settings have been updated.",
@@ -154,7 +116,7 @@ const ProfilePage = () => {
     }
   };
 
-  if (isSessionLoading || isProfileLoading || isVisibilityLoading) {
+  if (isProfileLoading) {
     return <div className="flex items-center justify-center p-8">Loading...</div>;
   }
 
