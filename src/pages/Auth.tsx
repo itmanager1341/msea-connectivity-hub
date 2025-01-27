@@ -176,9 +176,8 @@ const Auth = ({ onClose }: AuthProps) => {
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="outline" size="sm">
-          <LogIn className="mr-2 h-4 w-4" />
-          Login
+        <Button variant="default" size="lg" className="bg-white text-[#1A365D] hover:bg-white/90">
+          Member Login
         </Button>
       </SheetTrigger>
       <SheetContent>
