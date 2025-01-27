@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,50 +9,78 @@ import { Lock } from "lucide-react";
 
 const ResetPassword = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const { toast } = useToast();
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [hasToken, setHasToken] = useState(false);
 
   useEffect(() => {
-    // Check for token in both URL formats
-    const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    const queryParams = new URLSearchParams(window.location.search);
-    
-    const accessToken = hashParams.get("access_token") || queryParams.get("token");
-    const refreshToken = hashParams.get("refresh_token");
-    
-    console.log("Reset password page loaded", { accessToken, type: accessToken ? "Found token" : "No token" });
-    
-    if (!accessToken) {
-      console.error("No reset token found in URL");
-      toast({
-        title: "Error",
-        description: "Invalid or missing reset token. Please request a new password reset link.",
-        variant: "destructive",
+    const checkToken = async () => {
+      // Check URL hash for token (old format)
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      // Check URL query for token (new format)
+      const queryParams = new URLSearchParams(window.location.search);
+      
+      const accessToken = hashParams.get("access_token") || queryParams.get("token");
+      const refreshToken = hashParams.get("refresh_token");
+      
+      console.log("Reset password page loaded", { 
+        accessToken: accessToken ? "Found token" : "No token",
+        tokenSource: accessToken ? (hashParams.get("access_token") ? "hash" : "query") : "none"
       });
-      navigate("/login");
-    }
-    
-    // If we have an access token, set the session
-    if (accessToken) {
-      if (refreshToken) {
-        // Handle hash-based token (old format)
-        supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
+
+      if (!accessToken) {
+        console.error("No reset token found in URL");
+        toast({
+          title: "Error",
+          description: "Invalid or missing reset token. Please request a new password reset link.",
+          variant: "destructive",
         });
-      } else {
-        // Handle query-based token (new format)
-        // The token will be automatically handled by Supabase
-        console.log("Using query parameter token");
+        navigate("/login");
+        return;
       }
-    }
+
+      try {
+        if (refreshToken) {
+          // Handle hash-based token (old format)
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          if (error) throw error;
+        } else {
+          // Handle query-based token (new format)
+          // The token will be automatically handled by Supabase
+          console.log("Using query parameter token");
+        }
+        setHasToken(true);
+      } catch (error: any) {
+        console.error("Error setting session:", error);
+        toast({
+          title: "Error",
+          description: "Invalid reset token. Please request a new password reset link.",
+          variant: "destructive",
+        });
+        navigate("/login");
+      }
+    };
+
+    checkToken();
   }, [navigate, toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!hasToken) {
+      toast({
+        title: "Error",
+        description: "Invalid session. Please request a new password reset link.",
+        variant: "destructive",
+      });
+      navigate("/login");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -68,10 +96,7 @@ const ResetPassword = () => {
         password: newPassword
       });
 
-      if (error) {
-        console.error("Error updating password:", error);
-        throw error;
-      }
+      if (error) throw error;
 
       toast({
         title: "Success",
@@ -92,6 +117,10 @@ const ResetPassword = () => {
       setIsLoading(false);
     }
   };
+
+  if (!hasToken) {
+    return null; // Don't render the form until we verify the token
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
