@@ -17,18 +17,24 @@ const ResetPassword = () => {
 
   useEffect(() => {
     const checkToken = async () => {
-      // Check URL hash for token (old format)
+      // Get the full URL for debugging
+      const fullUrl = window.location.href;
+      console.log("Full URL:", fullUrl);
+
+      // Parse both hash and query parameters
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      // Check URL query for token (new format)
       const queryParams = new URLSearchParams(window.location.search);
       
+      // Check both locations for the token
       const accessToken = hashParams.get("access_token") || queryParams.get("token");
       const refreshToken = hashParams.get("refresh_token");
+      const type = queryParams.get("type");
       
-      console.log("Reset password page loaded", { 
-        accessToken: accessToken ? "Found token" : "No token",
-        tokenSource: accessToken ? (hashParams.get("access_token") ? "hash" : "query") : "none",
-        fullUrl: window.location.href
+      console.log("Token check:", { 
+        hasAccessToken: !!accessToken,
+        hasRefreshToken: !!refreshToken,
+        type,
+        tokenLocation: accessToken ? (hashParams.get("access_token") ? "hash" : "query") : "none"
       });
 
       if (!accessToken) {
@@ -50,18 +56,19 @@ const ResetPassword = () => {
             refresh_token: refreshToken,
           });
           if (error) throw error;
+          console.log("Session set successfully with hash token");
         } else {
           // Handle query-based token (new format)
           const { error } = await supabase.auth.verifyOtp({
             token_hash: accessToken,
-            type: 'recovery'
+            type: type || 'recovery'
           });
           if (error) throw error;
           console.log("OTP verified successfully");
         }
         setHasToken(true);
       } catch (error: any) {
-        console.error("Error setting session:", error);
+        console.error("Error verifying token:", error);
         toast({
           title: "Error",
           description: "Invalid reset token. Please request a new password reset link.",
@@ -124,7 +131,7 @@ const ResetPassword = () => {
   };
 
   if (!hasToken) {
-    return null; // Don't render the form until we verify the token
+    return null;
   }
 
   return (
