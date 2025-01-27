@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { Lock } from "lucide-react";
 
 const ResetPassword = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -17,27 +18,39 @@ const ResetPassword = () => {
 
   useEffect(() => {
     const checkToken = async () => {
-      // Get the full URL for debugging
       const fullUrl = window.location.href;
       console.log("Reset password page loaded", fullUrl);
 
-      // Parse both hash and query parameters
+      // Parse URL fragments and query parameters
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       const queryParams = new URLSearchParams(window.location.search);
       
-      // Check both locations for the token
-      const accessToken = hashParams.get("access_token") || queryParams.get("token");
-      const refreshToken = hashParams.get("refresh_token");
-      const type = queryParams.get("type");
+      // Check for errors first
+      const error = hashParams.get("error") || queryParams.get("error");
+      const errorDescription = hashParams.get("error_description") || queryParams.get("error_description");
       
+      if (error) {
+        console.error("Reset password error:", error, errorDescription);
+        toast({
+          title: "Error",
+          description: errorDescription || "Password reset link is invalid or has expired",
+          variant: "destructive",
+        });
+        navigate("/login");
+        return;
+      }
+
+      // Look for token in both hash and query parameters
+      const token = hashParams.get("access_token") || queryParams.get("token");
+      const type = queryParams.get("type") || "recovery";
+
       console.log("Token check:", { 
-        hasAccessToken: !!accessToken,
-        hasRefreshToken: !!refreshToken,
+        hasToken: !!token,
         type,
-        tokenLocation: accessToken ? (hashParams.get("access_token") ? "hash" : "query") : "none"
+        tokenLocation: token ? (hashParams.get("access_token") ? "hash" : "query") : "none"
       });
 
-      if (!accessToken) {
+      if (!token) {
         console.error("No reset token found in URL");
         toast({
           title: "Error",
@@ -49,29 +62,24 @@ const ResetPassword = () => {
       }
 
       try {
-        if (refreshToken) {
-          // Handle hash-based token (old format)
-          const { error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
-          if (error) throw error;
-          console.log("Session set successfully with hash token");
-        } else {
-          // Handle query-based token (new format)
-          const { error } = await supabase.auth.verifyOtp({
-            token_hash: accessToken,
-            type: 'recovery'
-          });
-          if (error) throw error;
-          console.log("OTP verified successfully");
+        // For recovery flow, we use verifyOtp
+        const { error: verifyError } = await supabase.auth.verifyOtp({
+          token_hash: token,
+          type: 'recovery'
+        });
+
+        if (verifyError) {
+          console.error("Token verification error:", verifyError);
+          throw verifyError;
         }
+
+        console.log("Token verified successfully");
         setHasToken(true);
       } catch (error: any) {
         console.error("Error verifying token:", error);
         toast({
           title: "Error",
-          description: "Invalid reset token. Please request a new password reset link.",
+          description: error.message || "Invalid reset token. Please request a new password reset link.",
           variant: "destructive",
         });
         navigate("/login");
@@ -83,6 +91,7 @@ const ResetPassword = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (!hasToken) {
       toast({
         title: "Error",
@@ -93,17 +102,27 @@ const ResetPassword = () => {
       return;
     }
 
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "Error",
+        description: "Passwords do not match",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      toast({
+        title: "Error",
+        description: "Password must be at least 6 characters long",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      if (newPassword !== confirmPassword) {
-        throw new Error("Passwords do not match");
-      }
-
-      if (newPassword.length < 6) {
-        throw new Error("Password must be at least 6 characters long");
-      }
-
       const { error } = await supabase.auth.updateUser({
         password: newPassword
       });
@@ -115,7 +134,6 @@ const ResetPassword = () => {
         description: "Your password has been reset successfully. Please log in with your new password.",
       });
 
-      // Sign out the user and redirect to login
       await supabase.auth.signOut();
       navigate("/login");
     } catch (error: any) {
