@@ -27,8 +27,31 @@ import { Switch } from "@/components/ui/switch";
 import type { Database } from "@/integrations/supabase/types";
 import { SidebarProvider } from "@/components/ui/sidebar";
 
-type Profile = Database["public"]["Tables"]["profiles"]["Row"];
-type SyncPreferences = Database["public"]["Tables"]["sync_preferences"]["Row"];
+// Define more specific types
+interface Profile {
+  record_id: number;
+  "First Name": string | null;
+  "Last Name": string | null;
+  "Full Name": string;
+  "Email": string;
+  "Phone Number": string | null;
+  "Company Name": string | null;
+  "Job Title": string | null;
+  "Industry": string | null;
+  "State/Region": string | null;
+  "City": string | null;
+  "Bio": string | null;
+  "LinkedIn": string | null;
+  "Membership": string | null;
+  active: boolean;
+}
+
+interface SyncPreferences {
+  id: number;
+  two_way_sync: boolean;
+  updated_at: string;
+}
+
 type SortableField = "Full Name" | "Company Name" | "Email" | "Phone Number" | "Membership" | "active";
 
 type SortConfig = {
@@ -133,9 +156,8 @@ const AdminPortal = () => {
 
   const handleSaveMember = async () => {
     try {
-      if (!editingMember) {
-        console.error('No member data to save');
-        return;
+      if (!editingMember?.record_id) {
+        throw new Error('Invalid member data: missing record_id');
       }
       
       console.log('Attempting to save member data:', editingMember);
@@ -147,8 +169,6 @@ const AdminPortal = () => {
         .eq('record_id', editingMember.record_id)
         .single();
 
-      console.log('Fetch result:', { existingProfile, fetchError });
-
       if (fetchError) {
         console.error('Error fetching profile:', fetchError);
         throw new Error(`Failed to verify profile: ${fetchError.message}`);
@@ -158,11 +178,11 @@ const AdminPortal = () => {
         throw new Error(`Profile with record_id ${editingMember.record_id} not found`);
       }
 
-      // Prepare update data
-      const updateData = {
+      // Prepare update data with type safety
+      const updateData: Partial<Profile> = {
         "First Name": editingMember["First Name"],
         "Last Name": editingMember["Last Name"],
-        "Full Name": `${editingMember["First Name"]} ${editingMember["Last Name"]}`.trim(),
+        "Full Name": `${editingMember["First Name"] || ''} ${editingMember["Last Name"] || ''}`.trim(),
         "Email": editingMember["Email"],
         "Phone Number": editingMember["Phone Number"],
         "Company Name": editingMember["Company Name"],
@@ -171,19 +191,18 @@ const AdminPortal = () => {
         "State/Region": editingMember["State/Region"],
         "City": editingMember["City"],
         "Bio": editingMember["Bio"],
-        "LinkedIn": editingMember["LinkedIn"] || null
+        "LinkedIn": editingMember["LinkedIn"]
       };
 
       console.log('Updating profile with data:', updateData);
 
-      // Call the RPC function with record_id as string
+      // Update the profile
       const { data: updatedProfile, error: updateError } = await supabase
-        .rpc('update_profile_by_record_id', { 
-          record_id_param: String(editingMember.record_id),
-          update_data: updateData 
-        });
-
-      console.log('Update result:', { updatedProfile, updateError });
+        .from('profiles')
+        .update(updateData)
+        .eq('record_id', editingMember.record_id)
+        .select()
+        .single();
 
       if (updateError) {
         console.error('Error updating profile:', updateError);
@@ -201,8 +220,6 @@ const AdminPortal = () => {
             }
           });
 
-          console.log('HubSpot sync response:', response);
-
           if (!response.data?.success) {
             console.error('HubSpot sync failed:', response.data?.error);
             toast({
@@ -211,7 +228,6 @@ const AdminPortal = () => {
               variant: "destructive",
             });
           } else {
-            console.log('Synced to HubSpot successfully');
             toast({
               title: "Member Updated",
               description: "Member information has been updated and synced with HubSpot.",
@@ -226,14 +242,13 @@ const AdminPortal = () => {
           });
         }
       } else {
-        console.log('Two-way sync is disabled, skipping HubSpot sync');
         toast({
           title: "Member Updated",
           description: "Member information has been updated. Note: Changes won't sync to HubSpot until two-way sync is enabled.",
         });
       }
 
-      refetch();
+      await refetch();
       setEditingMember(null);
     } catch (error: any) {
       console.error('Save error:', error);
@@ -277,7 +292,7 @@ const AdminPortal = () => {
     }
   };
 
-  const sortedProfiles = [...profiles].sort((a: Profile, b: Profile) => {
+  const sortedProfiles = [...(profiles || [])].sort((a: Profile, b: Profile) => {
     const key = sortConfig.key;
     const aValue = a[key] === null ? '' : String(a[key]);
     const bValue = b[key] === null ? '' : String(b[key]);
@@ -290,10 +305,10 @@ const AdminPortal = () => {
   const filteredProfiles = sortedProfiles.filter((profile: Profile) => {
     const searchLower = searchTerm.toLowerCase();
     return (
-      String(profile["Full Name"])?.toLowerCase().includes(searchLower) ||
-      String(profile["Company Name"])?.toLowerCase().includes(searchLower) ||
-      String(profile["Email"])?.toLowerCase().includes(searchLower) ||
-      String(profile["Membership"])?.toLowerCase().includes(searchLower)
+      profile["Full Name"]?.toLowerCase().includes(searchLower) ||
+      profile["Company Name"]?.toLowerCase().includes(searchLower) ||
+      profile["Email"]?.toLowerCase().includes(searchLower) ||
+      profile["Membership"]?.toLowerCase().includes(searchLower)
     );
   });
 
