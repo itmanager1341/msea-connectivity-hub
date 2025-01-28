@@ -19,9 +19,9 @@ serve(async (req) => {
 
     console.log('Fetching contacts from HubSpot list 4981...')
 
-    // First get the contacts list using the correct endpoint format
+    // First get the contacts list using the active list endpoint format
     const listResponse = await fetch(
-      `https://api.hubapi.com/contacts/v1/lists/static/4981/contacts/all`,
+      `https://api.hubapi.com/contacts/v1/lists/4981/contacts/all`,
       {
         headers: {
           'Authorization': `Bearer ${HUBSPOT_API_KEY}`,
