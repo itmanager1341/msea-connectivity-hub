@@ -37,7 +37,7 @@ const Auth = ({ onClose }: AuthProps) => {
         const site_url = process.env.REACT_APP_SITE_URL || window.location.origin;
         
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${site_url}/reset-password#`,
+          redirectTo: `${site_url}/reset-password`,
         });
         
         if (error) throw error;

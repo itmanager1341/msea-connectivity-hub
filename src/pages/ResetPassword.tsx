@@ -18,7 +18,8 @@ const ResetPassword = () => {
   useEffect(() => {
     const handlePasswordReset = async () => {
       try {
-        const hashFragment = window.location.hash;
+        // Get the hash fragment, handling both single and double hash cases
+        const hashFragment = window.location.hash.replace(/^#+/, '#');
         console.log("Hash fragment:", hashFragment);
         
         // Check if we're in a recovery flow
@@ -30,7 +31,7 @@ const ResetPassword = () => {
           return;
         }
         
-        if (!hashFragment) {
+        if (!hashFragment || hashFragment === '#') {
           throw new Error("Invalid password reset link");
         }
 
