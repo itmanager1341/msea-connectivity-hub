@@ -55,7 +55,7 @@ const Index = () => {
             <div className="flex justify-center gap-4">
               <Auth />
               <Link to="/about">
-                <Button variant="outline" size="lg" className="border-[#1EAEDB] text-[#1EAEDB] hover:bg-[#1EAEDB]/10">
+                <Button variant="default" size="lg" className="bg-white text-[#1A365D] hover:bg-white/90">
                   Learn More
                 </Button>
               </Link>
