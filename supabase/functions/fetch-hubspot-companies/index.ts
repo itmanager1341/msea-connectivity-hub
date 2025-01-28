@@ -17,10 +17,11 @@ serve(async (req) => {
       throw new Error('HUBSPOT_API_KEY is required')
     }
 
-    // Fetch the list data
-    const listId = '4981'
-    const response = await fetch(
-      `https://api.hubapi.com/contacts/v1/lists/${listId}/contacts/all`,
+    console.log('Fetching companies from HubSpot...')
+
+    // First get the companies list
+    const listResponse = await fetch(
+      `https://api.hubapi.com/contacts/v1/lists/4981/contacts/all`,
       {
         headers: {
           'Authorization': `Bearer ${HUBSPOT_API_KEY}`,
@@ -29,17 +30,58 @@ serve(async (req) => {
       }
     )
 
-    if (!response.ok) {
-      throw new Error(`HubSpot API error: ${response.statusText}`)
+    if (!listResponse.ok) {
+      throw new Error(`HubSpot List API error: ${listResponse.statusText}`)
     }
 
-    const data = await response.json()
-    console.log('Companies list data:', JSON.stringify(data, null, 2))
+    const listData = await listResponse.json()
+    console.log(`Found ${listData.contacts?.length || 0} contacts in the list`)
+
+    // Get associated companies for these contacts
+    const companies = new Set()
+    const companyDetails = []
+
+    for (const contact of (listData.contacts || [])) {
+      const associatedCompanyId = contact.properties?.associatedcompanyid?.value
+      
+      if (associatedCompanyId && !companies.has(associatedCompanyId)) {
+        companies.add(associatedCompanyId)
+        
+        console.log(`Fetching details for company ID: ${associatedCompanyId}`)
+        
+        // Fetch detailed company information
+        const companyResponse = await fetch(
+          `https://api.hubapi.com/companies/v2/companies/${associatedCompanyId}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${HUBSPOT_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        )
+
+        if (companyResponse.ok) {
+          const companyData = await companyResponse.json()
+          console.log('Company data:', {
+            name: companyData.properties?.name?.value,
+            logo: companyData.properties?.logo?.value,
+            domain: companyData.properties?.domain?.value,
+            city: companyData.properties?.city?.value,
+            state: companyData.properties?.state?.value
+          })
+          companyDetails.push(companyData)
+        } else {
+          console.error(`Failed to fetch company ${associatedCompanyId}:`, await companyResponse.text())
+        }
+      }
+    }
+
+    console.log(`Successfully fetched details for ${companyDetails.length} companies`)
 
     return new Response(
       JSON.stringify({
         success: true,
-        data: data
+        data: companyDetails
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
