@@ -4,16 +4,10 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Database } from "@/integrations/supabase/types";
 
-type Profile = Database['public']['Tables']['profiles']['Row'] & {
-  profile_visibility: Database['public']['Tables']['profile_visibility']['Row'] | null;
-};
+type Profile = Database['public']['Tables']['profiles']['Row'];
 
 export const MemberCard = ({ profile }: { profile: Profile }) => {
   const initials = `${profile["First Name"]?.[0] || ""}${profile["Last Name"]?.[0] || ""}`;
-
-  const getVisibilityValue = (field: 'show_email' | 'show_phone' | 'show_linkedin') => {
-    return profile.profile_visibility?.[field] ?? false;
-  };
 
   return (
     <Card className="hover:shadow-lg transition-shadow duration-200">
@@ -40,7 +34,7 @@ export const MemberCard = ({ profile }: { profile: Profile }) => {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            {getVisibilityValue('show_email') && profile.Email && (
+            {profile.Email && (
               <Button variant="outline" size="sm" asChild>
                 <a href={`mailto:${profile.Email}`}>
                   <Mail className="h-4 w-4 mr-2" />
@@ -49,7 +43,7 @@ export const MemberCard = ({ profile }: { profile: Profile }) => {
               </Button>
             )}
             
-            {getVisibilityValue('show_phone') && profile["Phone Number"] && (
+            {profile["Phone Number"] && (
               <Button variant="outline" size="sm" asChild>
                 <a href={`tel:${profile["Phone Number"]}`}>
                   <Phone className="h-4 w-4 mr-2" />
@@ -58,7 +52,7 @@ export const MemberCard = ({ profile }: { profile: Profile }) => {
               </Button>
             )}
             
-            {getVisibilityValue('show_linkedin') && profile.LinkedIn && (
+            {profile.LinkedIn && (
               <Button variant="outline" size="sm" asChild>
                 <a href={profile.LinkedIn} target="_blank" rel="noopener noreferrer">
                   <Linkedin className="h-4 w-4 mr-2" />

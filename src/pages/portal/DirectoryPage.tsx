@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Grid, List, Search, Filter } from "lucide-react";
+import { Grid, List, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -23,14 +23,7 @@ const DirectoryPage = () => {
       console.log('Fetching member profiles...');
       const { data, error } = await supabase
         .from('profiles')
-        .select(`
-          *,
-          profile_visibility (
-            show_email,
-            show_phone,
-            show_linkedin
-          )
-        `)
+        .select('*')
         .eq('active', true)
         .order('"Company Name"', { ascending: true });
 
