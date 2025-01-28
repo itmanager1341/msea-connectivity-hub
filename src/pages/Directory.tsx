@@ -15,6 +15,7 @@ type Profile = Database['public']['Tables']['profiles']['Row'];
 const Directory = () => {
   const [viewType, setViewType] = useState<ViewType>("company");
   const { toast } = useToast();
+  const [isFetching, setIsFetching] = useState(false);
 
   const { data: profiles, isLoading, error } = useQuery({
     queryKey: ['profiles'],
@@ -36,6 +37,39 @@ const Directory = () => {
     },
     retry: 1
   });
+
+  const fetchHubSpotCompanies = async () => {
+    setIsFetching(true);
+    try {
+      console.log('Invoking fetch-hubspot-companies function...');
+      const { data, error } = await supabase.functions.invoke('fetch-hubspot-companies');
+      
+      if (error) {
+        console.error('Error fetching companies:', error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch companies from HubSpot",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log('HubSpot companies response:', data);
+      toast({
+        title: "Success",
+        description: "Companies fetched successfully. Check the function logs for details.",
+      });
+    } catch (error) {
+      console.error('Function invocation error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to invoke the function",
+        variant: "destructive",
+      });
+    } finally {
+      setIsFetching(false);
+    }
+  };
 
   // Group companies by membership type with improved membership detection
   const groupedCompanies = profiles?.reduce((acc, profile) => {
@@ -120,10 +154,19 @@ const Directory = () => {
               </NavigationMenuList>
             </NavigationMenu>
           </div>
-          <Button variant="outline" className="flex items-center gap-2">
-            <LogIn className="w-4 h-4" />
-            Member Login
-          </Button>
+          <div className="flex items-center gap-4">
+            <Button 
+              variant="outline" 
+              onClick={fetchHubSpotCompanies}
+              disabled={isFetching}
+            >
+              {isFetching ? "Fetching..." : "Test HubSpot Companies"}
+            </Button>
+            <Button variant="outline" className="flex items-center gap-2">
+              <LogIn className="w-4 h-4" />
+              Member Login
+            </Button>
+          </div>
         </div>
       </header>
 
