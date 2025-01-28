@@ -35,6 +35,7 @@ const Auth = ({ onClose }: AuthProps) => {
     try {
       if (isForgotPassword) {
         const site_url = process.env.REACT_APP_SITE_URL || window.location.origin;
+        console.log("Using site URL:", site_url);
         
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: `${site_url}/reset-password`,
@@ -48,11 +49,13 @@ const Auth = ({ onClose }: AuthProps) => {
         });
         setIsForgotPassword(false);
       } else if (isSignUp) {
+        const site_url = process.env.REACT_APP_SITE_URL || window.location.origin;
+        
         const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/portal`,
+            emailRedirectTo: `${site_url}/portal`,
           },
         });
         if (error) throw error;
