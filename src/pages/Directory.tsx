@@ -37,7 +37,7 @@ const Directory = () => {
     
     const membership = profile.Membership || "Other";
     if (!acc[membership]) {
-      acc[membership] = new Set<string>();
+      acc[membership] = new Set();
     }
     acc[membership].add(profile["Company Name"]);
     return acc;
@@ -46,7 +46,7 @@ const Directory = () => {
   // Convert Sets to Arrays and sort company names
   const organizedCompanies = groupedCompanies ? 
     Object.entries(groupedCompanies).reduce((acc, [membership, companies]) => {
-      acc[membership] = Array.from(companies as Set<string>).sort();
+      acc[membership] = Array.from(companies).sort();
       return acc;
     }, {} as Record<string, string[]>) : {};
 
