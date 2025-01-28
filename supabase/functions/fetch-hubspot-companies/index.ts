@@ -17,9 +17,9 @@ serve(async (req) => {
       throw new Error('HUBSPOT_API_KEY is required')
     }
 
-    console.log('Fetching contacts from HubSpot list 4981...')
+    console.log('Fetching companies from HubSpot...')
 
-    // First get the contacts list using the active list endpoint format
+    // First get the companies list
     const listResponse = await fetch(
       `https://api.hubapi.com/contacts/v1/lists/4981/contacts/all`,
       {
@@ -31,8 +31,6 @@ serve(async (req) => {
     )
 
     if (!listResponse.ok) {
-      const errorText = await listResponse.text()
-      console.error('HubSpot List API error:', errorText)
       throw new Error(`HubSpot List API error: ${listResponse.statusText}`)
     }
 
