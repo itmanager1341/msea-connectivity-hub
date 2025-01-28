@@ -18,9 +18,17 @@ const ResetPassword = () => {
   useEffect(() => {
     const handlePasswordReset = async () => {
       try {
-        // Get the hash fragment
         const hashFragment = window.location.hash;
         console.log("Hash fragment:", hashFragment);
+        
+        // Check if we're in a recovery flow
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (session?.user) {
+          // User is already authenticated in a recovery flow
+          setIsTokenValid(true);
+          return;
+        }
         
         if (!hashFragment) {
           throw new Error("Invalid password reset link");
@@ -30,10 +38,12 @@ const ResetPassword = () => {
         const params = new URLSearchParams(hashFragment.substring(1));
         const accessToken = params.get("access_token");
         const type = params.get("type");
+        const refreshToken = params.get("refresh_token");
 
         console.log("Reset parameters:", { 
           hasAccessToken: !!accessToken,
-          type 
+          type,
+          hasRefreshToken: !!refreshToken
         });
 
         if (!accessToken || type !== "recovery") {
@@ -41,13 +51,14 @@ const ResetPassword = () => {
         }
 
         // Set the session with the access token
-        const { error: sessionError } = await supabase.auth.setSession({
+        const { error: setSessionError } = await supabase.auth.setSession({
           access_token: accessToken,
-          refresh_token: "",
+          refresh_token: refreshToken || "",
         });
 
-        if (sessionError) {
-          throw sessionError;
+        if (setSessionError) {
+          console.error("Session error:", setSessionError);
+          throw new Error("Unable to validate reset token. Please request a new password reset link.");
         }
 
         setIsTokenValid(true);
@@ -58,7 +69,8 @@ const ResetPassword = () => {
           description: error.message,
           variant: "destructive",
         });
-        navigate("/");
+        // Delay navigation to allow toast to be seen
+        setTimeout(() => navigate("/"), 2000);
       }
     };
 
@@ -106,17 +118,17 @@ const ResetPassword = () => {
 
       toast({
         title: "Success",
-        description: "Your password has been reset successfully",
+        description: "Your password has been reset successfully. Please sign in with your new password.",
       });
 
       // Sign out and redirect to home
       await supabase.auth.signOut();
-      navigate("/");
+      setTimeout(() => navigate("/"), 2000);
     } catch (error: any) {
       console.error("Password reset error:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to reset password",
+        description: error.message || "Failed to reset password. Please try again.",
         variant: "destructive",
       });
     } finally {
