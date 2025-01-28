@@ -34,10 +34,16 @@ const Auth = ({ onClose }: AuthProps) => {
 
     try {
       if (isForgotPassword) {
+        // Get the current origin for the reset URL
+        const origin = window.location.origin;
+        const resetPath = '/reset-password';
+        
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/reset-password`,
+          redirectTo: `${origin}${resetPath}`,
         });
+        
         if (error) throw error;
+        
         toast({
           title: "Password reset email sent",
           description: "Check your email for the reset link",
