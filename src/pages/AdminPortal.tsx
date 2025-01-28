@@ -25,6 +25,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import type { Database } from "@/integrations/supabase/types";
+import { SidebarProvider } from "@/components/ui/sidebar";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 type SyncPreferences = Database["public"]["Tables"]["sync_preferences"]["Row"];
@@ -297,10 +298,11 @@ const AdminPortal = () => {
   });
 
   return (
-    <div className="min-h-screen bg-[#F7FAFC]">
-      <PortalHeader />
-      <div className="p-8 pt-24"> {/* Added padding-top to account for fixed header */}
-        <div className="max-w-7xl mx-auto">
+    <SidebarProvider>
+      <div className="min-h-screen bg-[#F7FAFC]">
+        <PortalHeader />
+        <div className="p-8 pt-24">
+          <div className="max-w-7xl mx-auto">
           <div className="flex justify-between items-center mb-8">
             <h1 className="text-3xl font-bold text-[#1A365D]">Member Management</h1>
             <div className="flex items-center gap-4">
@@ -527,8 +529,10 @@ const AdminPortal = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+          </div>
+        </div>
       </div>
-    </div>
+    </SidebarProvider>
   );
 };
 
