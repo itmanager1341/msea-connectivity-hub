@@ -57,7 +57,7 @@ const Index = () => {
                 Member Login
               </Button>
               <Link to="/about">
-                <Button variant="outline" size="lg" className="border-white text-white hover:bg-white/10">
+                <Button variant="outline" size="lg" className="border-[#1EAEDB] text-[#1EAEDB] hover:bg-[#1EAEDB]/10">
                   Learn More
                 </Button>
               </Link>
