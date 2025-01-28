@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import Index from "./pages/Index";
 import About from "./pages/About";
 import Directory from "./pages/Directory";
@@ -54,31 +55,33 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Router>
-        <Routes>
-          {/* Public routes */}
-          <Route path="/" element={<Index />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/directory" element={<Directory />} />
-          <Route path="/resources" element={<Resources />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-          
-          {/* Protected routes */}
-          <Route 
-            path="/admin" 
-            element={
-              session ? <AdminPortal /> : <Navigate to="/" replace />
-            } 
-          />
-          <Route 
-            path="/portal/*" 
-            element={
-              session ? <MemberPortal /> : <Navigate to="/" replace />
-            } 
-          />
-        </Routes>
-        <Toaster />
-      </Router>
+      <SidebarProvider>
+        <Router>
+          <Routes>
+            {/* Public routes */}
+            <Route path="/" element={<Index />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/directory" element={<Directory />} />
+            <Route path="/resources" element={<Resources />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            
+            {/* Protected routes */}
+            <Route 
+              path="/admin" 
+              element={
+                session ? <AdminPortal /> : <Navigate to="/" replace />
+              } 
+            />
+            <Route 
+              path="/portal/*" 
+              element={
+                session ? <MemberPortal /> : <Navigate to="/" replace />
+              } 
+            />
+          </Routes>
+          <Toaster />
+        </Router>
+      </SidebarProvider>
     </QueryClientProvider>
   );
 }
