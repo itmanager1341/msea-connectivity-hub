@@ -13,6 +13,7 @@ const ResetPassword = () => {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isTokenValid, setIsTokenValid] = useState(false);
 
   useEffect(() => {
     const handlePasswordReset = async () => {
@@ -28,12 +29,10 @@ const ResetPassword = () => {
         // Parse the hash parameters (remove the leading #)
         const params = new URLSearchParams(hashFragment.substring(1));
         const accessToken = params.get("access_token");
-        const refreshToken = params.get("refresh_token");
         const type = params.get("type");
 
         console.log("Reset parameters:", { 
-          hasAccessToken: !!accessToken, 
-          hasRefreshToken: !!refreshToken, 
+          hasAccessToken: !!accessToken,
           type 
         });
 
@@ -41,16 +40,17 @@ const ResetPassword = () => {
           throw new Error("Invalid or expired password reset link");
         }
 
-        // Set the session with the tokens from the URL
+        // Set the session with the access token
         const { error: sessionError } = await supabase.auth.setSession({
           access_token: accessToken,
-          refresh_token: refreshToken || "",
+          refresh_token: "",
         });
 
         if (sessionError) {
           throw sessionError;
         }
 
+        setIsTokenValid(true);
       } catch (error: any) {
         console.error("Password reset setup error:", error);
         toast({
@@ -67,6 +67,15 @@ const ResetPassword = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!isTokenValid) {
+      toast({
+        title: "Error",
+        description: "Invalid reset token. Please request a new password reset link.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     if (newPassword !== confirmPassword) {
       toast({
@@ -114,6 +123,23 @@ const ResetPassword = () => {
       setIsLoading(false);
     }
   };
+
+  if (!isTokenValid) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-8">
+          <div>
+            <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+              Invalid Reset Link
+            </h2>
+            <p className="mt-2 text-center text-sm text-gray-600">
+              Please request a new password reset link
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">

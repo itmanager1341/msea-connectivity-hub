@@ -54,7 +54,7 @@ const Auth = ({ onClose }: AuthProps) => {
         if (error) throw error;
         toast({
           title: "Success!",
-          description: "Account created successfully.",
+          description: "Account created successfully. Please check your email to verify your account.",
         });
       } else {
         const { error } = await supabase.auth.signInWithPassword({
