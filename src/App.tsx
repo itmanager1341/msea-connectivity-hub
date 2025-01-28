@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Index from "./pages/Index";
 import About from "./pages/About";
+import Directory from "./pages/Directory";
 import Resources from "./pages/Resources";
 import AdminPortal from "./pages/AdminPortal";
 import MemberPortal from "./pages/MemberPortal";
@@ -58,6 +59,7 @@ function App() {
           {/* Public routes */}
           <Route path="/" element={<Index />} />
           <Route path="/about" element={<About />} />
+          <Route path="/directory" element={<Directory />} />
           <Route path="/resources" element={<Resources />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           
