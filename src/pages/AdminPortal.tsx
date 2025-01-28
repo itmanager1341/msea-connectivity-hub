@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { PortalHeader } from "@/components/portal/PortalHeader";
 import {
   Table,
   TableBody,
@@ -296,234 +297,237 @@ const AdminPortal = () => {
   });
 
   return (
-    <div className="min-h-screen bg-[#F7FAFC] p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-[#1A365D]">Member Management</h1>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={syncPrefs?.two_way_sync || false}
-                onCheckedChange={handleToggleTwoWaySync}
-              />
-              <Label>Two-way Sync</Label>
+    <div className="min-h-screen bg-[#F7FAFC]">
+      <PortalHeader />
+      <div className="p-8 pt-24"> {/* Added padding-top to account for fixed header */}
+        <div className="max-w-7xl mx-auto">
+          <div className="flex justify-between items-center mb-8">
+            <h1 className="text-3xl font-bold text-[#1A365D]">Member Management</h1>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={syncPrefs?.two_way_sync || false}
+                  onCheckedChange={handleToggleTwoWaySync}
+                />
+                <Label>Two-way Sync</Label>
+              </div>
             </div>
           </div>
-        </div>
-        
-        {/* Search and Actions Bar */}
-        <div className="flex justify-between items-center mb-6">
-          <div className="relative w-96">
-            <Input
-              type="text"
-              placeholder="Search members..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-            <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+          
+          {/* Search and Actions Bar */}
+          <div className="flex justify-between items-center mb-6">
+            <div className="relative w-96">
+              <Input
+                type="text"
+                placeholder="Search members..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+            </div>
+            <div className="flex gap-4">
+              <Button 
+                onClick={handleSync}
+                disabled={isSyncing}
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                {isSyncing ? 'Syncing...' : `Sync ${selectedMembers.length ? `Selected (${selectedMembers.length})` : 'All'}`}
+              </Button>
+            </div>
           </div>
-          <div className="flex gap-4">
-            <Button 
-              onClick={handleSync}
-              disabled={isSyncing}
-              className="flex items-center gap-2"
-            >
-              <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
-              {isSyncing ? 'Syncing...' : `Sync ${selectedMembers.length ? `Selected (${selectedMembers.length})` : 'All'}`}
-            </Button>
-          </div>
-        </div>
 
-        {/* Members Table */}
-        {isLoading ? (
-          <div className="text-center py-8">Loading members...</div>
-        ) : (
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[50px]">
-                    <Checkbox
-                      checked={selectedMembers.length === profiles?.length}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setSelectedMembers(profiles?.map(p => p.record_id) || []);
-                        } else {
-                          setSelectedMembers([]);
-                        }
-                      }}
-                    />
-                  </TableHead>
-                  <TableHead onClick={() => handleSort("Full Name")} className="cursor-pointer hover:bg-gray-50">
-                    <div className="flex items-center">
-                      Name
-                      <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </div>
-                  </TableHead>
-                  <TableHead onClick={() => handleSort("Company Name")} className="cursor-pointer hover:bg-gray-50">
-                    <div className="flex items-center">
-                      Company
-                      <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </div>
-                  </TableHead>
-                  <TableHead onClick={() => handleSort("Email")} className="cursor-pointer hover:bg-gray-50">
-                    <div className="flex items-center">
-                      Email
-                      <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </div>
-                  </TableHead>
-                  <TableHead onClick={() => handleSort("Phone Number")} className="cursor-pointer hover:bg-gray-50">
-                    <div className="flex items-center">
-                      Phone
-                      <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </div>
-                  </TableHead>
-                  <TableHead onClick={() => handleSort("Membership")} className="cursor-pointer hover:bg-gray-50">
-                    <div className="flex items-center">
-                      Membership
-                      <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </div>
-                  </TableHead>
-                  <TableHead onClick={() => handleSort("active")} className="cursor-pointer hover:bg-gray-50">
-                    <div className="flex items-center">
-                      Status
-                      <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </div>
-                  </TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredProfiles?.map((profile) => (
-                  <TableRow key={profile.record_id}>
-                    <TableCell>
+          {/* Members Table */}
+          {isLoading ? (
+            <div className="text-center py-8">Loading members...</div>
+          ) : (
+            <div className="bg-white rounded-lg shadow overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[50px]">
                       <Checkbox
-                        checked={selectedMembers.includes(profile.record_id)}
+                        checked={selectedMembers.length === profiles?.length}
                         onCheckedChange={(checked) => {
                           if (checked) {
-                            setSelectedMembers(prev => [...prev, profile.record_id]);
+                            setSelectedMembers(profiles?.map(p => p.record_id) || []);
                           } else {
-                            setSelectedMembers(prev => prev.filter(id => id !== profile.record_id));
+                            setSelectedMembers([]);
                           }
                         }}
                       />
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {profile["Full Name"]}
-                    </TableCell>
-                    <TableCell>{profile["Company Name"]}</TableCell>
-                    <TableCell>{profile["Email"]}</TableCell>
-                    <TableCell>{profile["Phone Number"]}</TableCell>
-                    <TableCell>{profile["Membership"]}</TableCell>
-                    <TableCell>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        profile.active 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {profile.active ? 'Active' : 'Inactive'}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => setEditingMember(profile)}
-                      >
-                        Edit
-                      </Button>
-                    </TableCell>
+                    </TableHead>
+                    <TableHead onClick={() => handleSort("Full Name")} className="cursor-pointer hover:bg-gray-50">
+                      <div className="flex items-center">
+                        Name
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                      </div>
+                    </TableHead>
+                    <TableHead onClick={() => handleSort("Company Name")} className="cursor-pointer hover:bg-gray-50">
+                      <div className="flex items-center">
+                        Company
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                      </div>
+                    </TableHead>
+                    <TableHead onClick={() => handleSort("Email")} className="cursor-pointer hover:bg-gray-50">
+                      <div className="flex items-center">
+                        Email
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                      </div>
+                    </TableHead>
+                    <TableHead onClick={() => handleSort("Phone Number")} className="cursor-pointer hover:bg-gray-50">
+                      <div className="flex items-center">
+                        Phone
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                      </div>
+                    </TableHead>
+                    <TableHead onClick={() => handleSort("Membership")} className="cursor-pointer hover:bg-gray-50">
+                      <div className="flex items-center">
+                        Membership
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                      </div>
+                    </TableHead>
+                    <TableHead onClick={() => handleSort("active")} className="cursor-pointer hover:bg-gray-50">
+                      <div className="flex items-center">
+                        Status
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                      </div>
+                    </TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-      </div>
+                </TableHeader>
+                <TableBody>
+                  {filteredProfiles?.map((profile) => (
+                    <TableRow key={profile.record_id}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedMembers.includes(profile.record_id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedMembers(prev => [...prev, profile.record_id]);
+                            } else {
+                              setSelectedMembers(prev => prev.filter(id => id !== profile.record_id));
+                            }
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {profile["Full Name"]}
+                      </TableCell>
+                      <TableCell>{profile["Company Name"]}</TableCell>
+                      <TableCell>{profile["Email"]}</TableCell>
+                      <TableCell>{profile["Phone Number"]}</TableCell>
+                      <TableCell>{profile["Membership"]}</TableCell>
+                      <TableCell>
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          profile.active 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {profile.active ? 'Active' : 'Inactive'}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => setEditingMember(profile)}
+                        >
+                          Edit
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </div>
 
-      {/* Edit Member Dialog */}
-      <Dialog open={!!editingMember} onOpenChange={(open) => !open && setEditingMember(null)}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Edit Member</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="firstName" className="text-right">
-                First Name
-              </Label>
-              <Input
-                id="firstName"
-                value={editingMember?.["First Name"] || ""}
-                onChange={(e) => setEditingMember(prev => ({ ...prev, "First Name": e.target.value }))}
-                className="col-span-3"
-              />
+        {/* Edit Member Dialog */}
+        <Dialog open={!!editingMember} onOpenChange={(open) => !open && setEditingMember(null)}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Edit Member</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="firstName" className="text-right">
+                  First Name
+                </Label>
+                <Input
+                  id="firstName"
+                  value={editingMember?.["First Name"] || ""}
+                  onChange={(e) => setEditingMember(prev => ({ ...prev, "First Name": e.target.value }))}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="lastName" className="text-right">
+                  Last Name
+                </Label>
+                <Input
+                  id="lastName"
+                  value={editingMember?.["Last Name"] || ""}
+                  onChange={(e) => setEditingMember(prev => ({ ...prev, "Last Name": e.target.value }))}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="email" className="text-right">
+                  Email
+                </Label>
+                <Input
+                  id="email"
+                  value={editingMember?.["Email"] || ""}
+                  onChange={(e) => setEditingMember(prev => ({ ...prev, "Email": e.target.value }))}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="phone" className="text-right">
+                  Phone
+                </Label>
+                <Input
+                  id="phone"
+                  value={editingMember?.["Phone Number"] || ""}
+                  onChange={(e) => setEditingMember(prev => ({ ...prev, "Phone Number": e.target.value }))}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="company" className="text-right">
+                  Company
+                </Label>
+                <Input
+                  id="company"
+                  value={editingMember?.["Company Name"] || ""}
+                  onChange={(e) => setEditingMember(prev => ({ ...prev, "Company Name": e.target.value }))}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="linkedin" className="text-right">
+                  LinkedIn
+                </Label>
+                <Input
+                  id="linkedin"
+                  value={editingMember?.["LinkedIn"] || ""}
+                  onChange={(e) => setEditingMember(prev => ({ ...prev, "LinkedIn": e.target.value }))}
+                  className="col-span-3"
+                />
+              </div>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="lastName" className="text-right">
-                Last Name
-              </Label>
-              <Input
-                id="lastName"
-                value={editingMember?.["Last Name"] || ""}
-                onChange={(e) => setEditingMember(prev => ({ ...prev, "Last Name": e.target.value }))}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="email" className="text-right">
-                Email
-              </Label>
-              <Input
-                id="email"
-                value={editingMember?.["Email"] || ""}
-                onChange={(e) => setEditingMember(prev => ({ ...prev, "Email": e.target.value }))}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="phone" className="text-right">
-                Phone
-              </Label>
-              <Input
-                id="phone"
-                value={editingMember?.["Phone Number"] || ""}
-                onChange={(e) => setEditingMember(prev => ({ ...prev, "Phone Number": e.target.value }))}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="company" className="text-right">
-                Company
-              </Label>
-              <Input
-                id="company"
-                value={editingMember?.["Company Name"] || ""}
-                onChange={(e) => setEditingMember(prev => ({ ...prev, "Company Name": e.target.value }))}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="linkedin" className="text-right">
-                LinkedIn
-              </Label>
-              <Input
-                id="linkedin"
-                value={editingMember?.["LinkedIn"] || ""}
-                onChange={(e) => setEditingMember(prev => ({ ...prev, "LinkedIn": e.target.value }))}
-                className="col-span-3"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingMember(null)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSaveMember}>Save Changes</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditingMember(null)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveMember}>Save Changes</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
     </div>
   );
 };
