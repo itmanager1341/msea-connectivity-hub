@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { MessageSquare, Trash2 } from "lucide-react";
+import { MessageSquare, Trash2, Edit2, X, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,6 +25,8 @@ interface ResourceCommentsProps {
 export const ResourceComments = ({ resourceId }: ResourceCommentsProps) => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [userProfiles, setUserProfiles] = useState<Record<string, UserProfile>>({});
@@ -39,6 +41,44 @@ export const ResourceComments = ({ resourceId }: ResourceCommentsProps) => {
   const getCurrentUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     setCurrentUserId(user?.id || null);
+  };
+
+  const handleEdit = (comment: Comment) => {
+    setEditingCommentId(comment.id);
+    setEditContent(comment.content);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingCommentId(null);
+    setEditContent("");
+  };
+
+  const handleSaveEdit = async (commentId: string) => {
+    if (!editContent.trim()) return;
+
+    setIsSubmitting(true);
+    const { error } = await supabase
+      .from("resource_comments")
+      .update({ content: editContent.trim(), updated_at: new Date().toISOString() })
+      .eq("id", commentId);
+
+    setIsSubmitting(false);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update comment. Please try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setEditingCommentId(null);
+    setEditContent("");
+    toast({
+      title: "Success",
+      description: "Comment updated successfully",
+    });
   };
 
   const fetchUserProfile = async (userId: string) => {
@@ -204,17 +244,59 @@ export const ResourceComments = ({ resourceId }: ResourceCommentsProps) => {
                   </span>
                 </div>
                 {comment.user_id === currentUserId && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleDelete(comment.id)}
-                    className="h-6 w-6"
-                  >
-                    <Trash2 className="h-4 w-4 text-gray-400 hover:text-red-500" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    {editingCommentId === comment.id ? (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleSaveEdit(comment.id)}
+                          className="h-6 w-6"
+                          disabled={isSubmitting}
+                        >
+                          <Check className="h-4 w-4 text-green-500" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={handleCancelEdit}
+                          className="h-6 w-6"
+                        >
+                          <X className="h-4 w-4 text-gray-400" />
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEdit(comment)}
+                          className="h-6 w-6"
+                        >
+                          <Edit2 className="h-4 w-4 text-gray-400 hover:text-blue-500" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(comment.id)}
+                          className="h-6 w-6"
+                        >
+                          <Trash2 className="h-4 w-4 text-gray-400 hover:text-red-500" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 )}
               </div>
-              <p className="text-sm text-gray-700">{comment.content}</p>
+              {editingCommentId === comment.id ? (
+                <Textarea
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  className="min-h-[60px]"
+                />
+              ) : (
+                <p className="text-sm text-gray-700">{comment.content}</p>
+              )}
             </div>
           ))}
         </div>
