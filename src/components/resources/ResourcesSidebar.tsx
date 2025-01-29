@@ -41,8 +41,7 @@ export const ResourcesSidebar = ({ selectedResource, onClose, onResourceUpdate }
       if (!selectedResource) return;
       
       try {
-        const { data } = await supabase.auth.getUser();
-        const user = data?.user;
+        const { data: { user } } = await supabase.auth.getUser();
         setIsCheckedOutByMe(selectedResource.checked_out_by === user?.id);
       } catch (error) {
         console.error('Error checking ownership:', error);
@@ -115,9 +114,12 @@ export const ResourcesSidebar = ({ selectedResource, onClose, onResourceUpdate }
 
       if (error) throw error;
 
+      // Automatically download after successful checkout
+      await handleDownload();
+
       toast({
         title: "Document checked out",
-        description: "You can now download and edit the document.",
+        description: "Document has been checked out and downloaded.",
       });
       
       onResourceUpdate();
@@ -126,6 +128,39 @@ export const ResourcesSidebar = ({ selectedResource, onClose, onResourceUpdate }
       toast({
         title: "Checkout failed",
         description: "There was an error checking out the document.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsChecking(false);
+    }
+  };
+
+  const handleCancelCheckout = async () => {
+    if (!selectedResource) return;
+    
+    setIsChecking(true);
+    try {
+      const { error } = await supabase
+        .from('resources')
+        .update({
+          checked_out_by: null,
+          checked_out_at: null
+        })
+        .eq('id', selectedResource.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Checkout cancelled",
+        description: "The document has been released.",
+      });
+      
+      onResourceUpdate();
+    } catch (error) {
+      console.error('Cancel checkout error:', error);
+      toast({
+        title: "Cancel failed",
+        description: "There was an error cancelling the checkout.",
         variant: "destructive",
       });
     } finally {
@@ -159,7 +194,7 @@ export const ResourcesSidebar = ({ selectedResource, onClose, onResourceUpdate }
 
       if (uploadError) throw uploadError;
 
-      // Create version record
+      // Create version record of the current version
       const { error: versionError } = await supabase
         .from('resource_versions')
         .insert({
@@ -173,7 +208,7 @@ export const ResourcesSidebar = ({ selectedResource, onClose, onResourceUpdate }
 
       if (versionError) throw versionError;
 
-      // Update resource record
+      // Update resource record with new version
       const { error: updateError } = await supabase
         .from('resources')
         .update({
@@ -316,6 +351,14 @@ export const ResourcesSidebar = ({ selectedResource, onClose, onResourceUpdate }
               className="cursor-pointer"
             />
             <div className="flex gap-2">
+              <Button 
+                variant="outline"
+                className="flex-1" 
+                onClick={handleCancelCheckout}
+                disabled={isChecking}
+              >
+                Cancel Checkout
+              </Button>
               <Button 
                 className="flex-1" 
                 onClick={handleCheckin}
