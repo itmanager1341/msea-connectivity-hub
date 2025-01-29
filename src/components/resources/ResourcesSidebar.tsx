@@ -101,13 +101,14 @@ export const ResourcesSidebar = ({ selectedResource, onClose, onResourceUpdate }
     
     setIsChecking(true);
     try {
-      const { data } = await supabase.auth.getUser();
-      const user = data?.user;
+      const { data: { user } } = await supabase.auth.getUser();
       
+      if (!user) throw new Error("User not authenticated");
+
       const { error } = await supabase
         .from('resources')
         .update({
-          checked_out_by: user?.id,
+          checked_out_by: user.id,
           checked_out_at: new Date().toISOString()
         })
         .eq('id', selectedResource.id);
@@ -144,9 +145,11 @@ export const ResourcesSidebar = ({ selectedResource, onClose, onResourceUpdate }
     
     setIsChecking(true);
     try {
-      const { data } = await supabase.auth.getUser();
-      const user = data?.user;
+      const { data: { user } } = await supabase.auth.getUser();
       
+      if (!user) throw new Error("User not authenticated");
+
+      // Upload new version
       const fileExt = uploadFile.name.split('.').pop();
       const fileName = `${crypto.randomUUID()}.${fileExt}`;
 
@@ -156,6 +159,7 @@ export const ResourcesSidebar = ({ selectedResource, onClose, onResourceUpdate }
 
       if (uploadError) throw uploadError;
 
+      // Create version record
       const { error: versionError } = await supabase
         .from('resource_versions')
         .insert({
@@ -164,11 +168,12 @@ export const ResourcesSidebar = ({ selectedResource, onClose, onResourceUpdate }
           file_url: selectedResource.file_url,
           file_type: selectedResource.file_type,
           file_size: selectedResource.file_size,
-          created_by: user?.id
+          created_by: user.id
         });
 
       if (versionError) throw versionError;
 
+      // Update resource record
       const { error: updateError } = await supabase
         .from('resources')
         .update({
@@ -279,7 +284,9 @@ export const ResourcesSidebar = ({ selectedResource, onClose, onResourceUpdate }
             {isCheckedOut && (
               <div className="flex items-center gap-2 text-amber-600">
                 <Lock className="h-4 w-4" />
-                <span className="text-xs">Checked Out</span>
+                <span className="text-xs">
+                  {isCheckedOutByMe ? "Checked out by you" : "Checked out"}
+                </span>
               </div>
             )}
           </div>
@@ -321,21 +328,24 @@ export const ResourcesSidebar = ({ selectedResource, onClose, onResourceUpdate }
           </div>
         ) : (
           <div className="flex gap-2">
-            <Button 
-              className="flex-1" 
-              onClick={handleDownload}
-              disabled={isDownloading}
-            >
-              <Download className="h-4 w-4 mr-2" />
-              {isDownloading ? "Downloading..." : `Download (${formatFileSize(selectedResource?.file_size)})`}
-            </Button>
             {!isCheckedOut && (
               <Button
+                className="flex-1"
                 onClick={handleCheckout}
                 disabled={isChecking}
               >
                 <Lock className="h-4 w-4 mr-2" />
                 Check Out
+              </Button>
+            )}
+            {(!isCheckedOut || isCheckedOutByMe) && (
+              <Button 
+                className="flex-1" 
+                onClick={handleDownload}
+                disabled={isDownloading}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                {isDownloading ? "Downloading..." : `Download (${formatFileSize(selectedResource?.file_size)})`}
               </Button>
             )}
           </div>
