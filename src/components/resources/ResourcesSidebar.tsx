@@ -82,10 +82,12 @@ export const ResourcesSidebar = ({ selectedResource, onClose, onResourceUpdate }
     
     setIsChecking(true);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
       const { error } = await supabase
         .from('resources')
         .update({
-          checked_out_by: (await supabase.auth.getUser()).data.user?.id,
+          checked_out_by: user?.id,
           checked_out_at: new Date().toISOString()
         })
         .eq('id', selectedResource.id);
@@ -122,6 +124,8 @@ export const ResourcesSidebar = ({ selectedResource, onClose, onResourceUpdate }
     
     setIsChecking(true);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
       const fileExt = uploadFile.name.split('.').pop();
       const fileName = `${crypto.randomUUID()}.${fileExt}`;
 
@@ -139,7 +143,7 @@ export const ResourcesSidebar = ({ selectedResource, onClose, onResourceUpdate }
           file_url: selectedResource.file_url,
           file_type: selectedResource.file_type,
           file_size: selectedResource.file_size,
-          created_by: (await supabase.auth.getUser()).data.user?.id
+          created_by: user?.id
         });
 
       if (versionError) throw versionError;
