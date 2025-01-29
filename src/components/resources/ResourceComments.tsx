@@ -44,17 +44,24 @@ export const ResourceComments = ({ resourceId }: ResourceCommentsProps) => {
   const fetchUserProfile = async (userId: string) => {
     if (userProfiles[userId]) return;
 
-    const { data: profiles } = await supabase
+    const { data: profiles, error } = await supabase
       .from("profiles")
-      .select("First Name, Last Name")
+      .select("\"First Name\", \"Last Name\"")
       .eq("Email", userId);
+
+    if (error) {
+      console.error("Error fetching user profile:", error);
+      return;
+    }
 
     if (profiles && profiles.length > 0) {
       const profile = profiles[0] as UserProfile;
-      setUserProfiles(prev => ({
-        ...prev,
-        [userId]: profile
-      }));
+      if (profile["First Name"] !== null || profile["Last Name"] !== null) {
+        setUserProfiles(prev => ({
+          ...prev,
+          [userId]: profile
+        }));
+      }
     }
   };
 
