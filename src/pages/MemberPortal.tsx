@@ -7,10 +7,22 @@ import { ResourcesSidebar } from "@/components/resources/ResourcesSidebar";
 import ProfilePage from "./portal/ProfilePage";
 import DirectoryPage from "./portal/DirectoryPage";
 import ResourcesPage from "./portal/ResourcesPage";
+import { useState } from "react";
+
+interface Resource {
+  id: string;
+  title: string;
+  description: string | null;
+  file_url: string;
+  file_type: string;
+  file_size: number | null;
+  created_at: string;
+}
 
 const MemberPortal = () => {
   const location = useLocation();
   const isResourcesPage = location.pathname.startsWith("/portal/resources");
+  const [selectedResource, setSelectedResource] = useState<Resource | null>(null);
 
   return (
     <SidebarProvider>
@@ -33,12 +45,27 @@ const MemberPortal = () => {
                 } />
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/directory" element={<DirectoryPage />} />
-                <Route path="/resources" element={<ResourcesPage />} />
+                <Route 
+                  path="/resources" 
+                  element={
+                    <ResourcesPage 
+                      onResourceSelect={setSelectedResource}
+                      selectedResource={selectedResource}
+                    />
+                  } 
+                />
               </Routes>
             </div>
           </main>
 
-          {isResourcesPage ? <ResourcesSidebar /> : <PortalRightSidebar />}
+          {isResourcesPage ? (
+            <ResourcesSidebar 
+              selectedResource={selectedResource} 
+              onClose={() => setSelectedResource(null)} 
+            />
+          ) : (
+            <PortalRightSidebar />
+          )}
         </div>
       </div>
     </SidebarProvider>

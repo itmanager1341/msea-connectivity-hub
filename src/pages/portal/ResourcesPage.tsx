@@ -8,7 +8,6 @@ import { Card } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ResourceUploadModal } from "@/components/resources/ResourceUploadModal";
-import { ResourcesSidebar } from "@/components/resources/ResourcesSidebar";
 
 interface Resource {
   id: string;
@@ -20,11 +19,15 @@ interface Resource {
   created_at: string;
 }
 
-const ResourcesPage = () => {
+interface ResourcesPageProps {
+  selectedResource: Resource | null;
+  onResourceSelect: (resource: Resource | null) => void;
+}
+
+const ResourcesPage = ({ selectedResource, onResourceSelect }: ResourcesPageProps) => {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchQuery, setSearchQuery] = useState("");
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [selectedResource, setSelectedResource] = useState<Resource | null>(null);
 
   const { data: resources, isLoading, refetch } = useQuery({
     queryKey: ["resources"],
@@ -59,12 +62,8 @@ const ResourcesPage = () => {
     resource.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleUploadComplete = () => {
-    refetch();
-  };
-
   const handleResourceClick = (resource: Resource) => {
-    setSelectedResource(resource);
+    onResourceSelect(resource);
   };
 
   const GridView = () => (
@@ -147,7 +146,7 @@ const ResourcesPage = () => {
           </Button>
         </div>
       </div>
-
+      
       {/* Resource Management Bar */}
       <div className="flex items-center justify-between bg-white p-4 rounded-lg shadow-sm mb-6">
         <div className="flex items-center gap-4">
@@ -201,11 +200,6 @@ const ResourcesPage = () => {
             viewMode === "grid" ? <GridView /> : <ListView />
           )}
         </div>
-
-        <ResourcesSidebar 
-          selectedResource={selectedResource} 
-          onClose={() => setSelectedResource(null)} 
-        />
       </div>
 
       <ResourceUploadModal
