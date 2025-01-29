@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { FileText, Clock, Download, X, Lock, Upload } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
@@ -5,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { ResourceComments } from "./ResourceComments";
 import { supabase } from "@/integrations/supabase/client";
-import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
 
@@ -32,7 +32,26 @@ export const ResourcesSidebar = ({ selectedResource, onClose, onResourceUpdate }
   const [isDownloading, setIsDownloading] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [isCheckedOutByMe, setIsCheckedOutByMe] = useState(false);
   const { toast } = useToast();
+
+  // Check if the current user is the one who checked out the resource
+  useEffect(() => {
+    const checkOwnership = async () => {
+      if (!selectedResource) return;
+      
+      try {
+        const { data } = await supabase.auth.getUser();
+        const user = data?.user;
+        setIsCheckedOutByMe(selectedResource.checked_out_by === user?.id);
+      } catch (error) {
+        console.error('Error checking ownership:', error);
+        setIsCheckedOutByMe(false);
+      }
+    };
+
+    checkOwnership();
+  }, [selectedResource]);
 
   const formatFileSize = (bytes: number | null) => {
     if (!bytes) return "N/A";
@@ -241,12 +260,6 @@ export const ResourcesSidebar = ({ selectedResource, onClose, onResourceUpdate }
   }
 
   const isCheckedOut = !!selectedResource.checked_out_by;
-  const currentUserPromise = supabase.auth.getUser();
-  const isCheckedOutByMe = async () => {
-    const { data } = await currentUserPromise;
-    const user = data?.user;
-    return selectedResource.checked_out_by === user?.id;
-  };
 
   return (
     <aside className="hidden lg:block w-[400px] shrink-0 bg-white border-l border-gray-200 p-6 overflow-y-auto">
@@ -288,7 +301,7 @@ export const ResourcesSidebar = ({ selectedResource, onClose, onResourceUpdate }
           </div>
         </div>
 
-        {await isCheckedOutByMe() ? (
+        {isCheckedOutByMe ? (
           <div className="space-y-4">
             <Input
               type="file"
