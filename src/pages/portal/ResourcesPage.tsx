@@ -1,12 +1,86 @@
 import { useState } from "react";
-import { Grid, List, Upload, Plus, Search } from "lucide-react";
+import { Grid, List, Upload, Plus, Search, File, Folder } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card } from "@/components/ui/card";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+
+interface Resource {
+  id: string;
+  title: string;
+  description: string | null;
+  file_url: string;
+  file_type: string;
+  file_size: number | null;
+  created_at: string;
+}
 
 const ResourcesPage = () => {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const { data: resources, isLoading } = useQuery({
+    queryKey: ["resources"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("resources")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      return data as Resource[];
+    },
+  });
+
+  const filteredResources = resources?.filter((resource) =>
+    resource.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const GridView = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      {filteredResources?.map((resource) => (
+        <Card key={resource.id} className="p-4 hover:shadow-lg transition-shadow">
+          <div className="flex flex-col items-center">
+            <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center mb-3">
+              <File className="w-8 h-8 text-gray-400" />
+            </div>
+            <h3 className="text-sm font-medium text-gray-900 text-center mb-1">
+              {resource.title}
+            </h3>
+            <p className="text-xs text-gray-500">
+              {new Date(resource.created_at).toLocaleDateString()}
+            </p>
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+
+  const ListView = () => (
+    <div className="space-y-2">
+      {filteredResources?.map((resource) => (
+        <Card key={resource.id} className="p-4 hover:bg-gray-50">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 bg-gray-100 rounded flex items-center justify-center">
+              <File className="w-5 h-5 text-gray-400" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-sm font-medium text-gray-900">{resource.title}</h3>
+              <p className="text-xs text-gray-500">
+                {new Date(resource.created_at).toLocaleDateString()}
+              </p>
+            </div>
+            <div className="text-xs text-gray-500">
+              {resource.file_size ? `${Math.round(resource.file_size / 1024)} KB` : "N/A"}
+            </div>
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
 
   return (
     <div className="h-full flex flex-col">
@@ -15,7 +89,7 @@ const ResourcesPage = () => {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Resources</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Collaborate on documents, white papers, and newsletters
+            Access and manage your documents and resources
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -38,6 +112,8 @@ const ResourcesPage = () => {
             <Input
               placeholder="Search resources..."
               className="pl-10"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
           <Separator orientation="vertical" className="h-6" />
@@ -69,10 +145,16 @@ const ResourcesPage = () => {
 
       {/* Main Content Area */}
       <div className="flex-1 bg-white rounded-lg shadow-sm p-6">
-        <div className="text-center text-gray-500">
-          <p>No resources yet</p>
-          <p className="text-sm">Upload a document or create a new one to get started</p>
-        </div>
+        {isLoading ? (
+          <div className="text-center text-gray-500">Loading resources...</div>
+        ) : filteredResources?.length === 0 ? (
+          <div className="text-center text-gray-500">
+            <p>No resources found</p>
+            <p className="text-sm">Upload a document or create a new one to get started</p>
+          </div>
+        ) : (
+          viewMode === "grid" ? <GridView /> : <ListView />
+        )}
       </div>
     </div>
   );
