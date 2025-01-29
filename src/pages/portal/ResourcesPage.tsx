@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { ResourceUploadModal } from "@/components/resources/ResourceUploadModal";
 
 interface Resource {
   id: string;
@@ -21,8 +22,9 @@ interface Resource {
 const ResourcesPage = () => {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchQuery, setSearchQuery] = useState("");
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
-  const { data: resources, isLoading } = useQuery({
+  const { data: resources, isLoading, refetch } = useQuery({
     queryKey: ["resources"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -38,6 +40,10 @@ const ResourcesPage = () => {
   const filteredResources = resources?.filter((resource) =>
     resource.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const handleUploadComplete = () => {
+    refetch();
+  };
 
   const GridView = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -93,7 +99,11 @@ const ResourcesPage = () => {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setIsUploadModalOpen(true)}
+          >
             <Upload className="h-4 w-4 mr-2" />
             Upload
           </Button>
@@ -156,6 +166,12 @@ const ResourcesPage = () => {
           viewMode === "grid" ? <GridView /> : <ListView />
         )}
       </div>
+
+      <ResourceUploadModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        onUploadComplete={handleUploadComplete}
+      />
     </div>
   );
 };
