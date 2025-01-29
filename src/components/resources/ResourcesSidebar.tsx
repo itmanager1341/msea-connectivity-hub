@@ -3,6 +3,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
+import { ResourceComments } from "./ResourceComments";
 
 interface Resource {
   id: string;
@@ -114,6 +115,10 @@ export const ResourcesSidebar = ({ selectedResource, onClose }: ResourcesSidebar
           <Download className="h-4 w-4 mr-2" />
           Download ({formatFileSize(selectedResource.file_size)})
         </Button>
+
+        <Separator />
+
+        <ResourceComments resourceId={selectedResource.id} />
       </div>
     </aside>
   );
