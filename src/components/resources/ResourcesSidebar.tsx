@@ -4,6 +4,9 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { ResourceComments } from "./ResourceComments";
+import { supabase } from "@/integrations/supabase/client";
+import { useState } from "react";
+import { useToast } from "@/components/ui/use-toast";
 
 interface Resource {
   id: string;
@@ -21,6 +24,9 @@ interface ResourcesSidebarProps {
 }
 
 export const ResourcesSidebar = ({ selectedResource, onClose }: ResourcesSidebarProps) => {
+  const [isDownloading, setIsDownloading] = useState(false);
+  const { toast } = useToast();
+
   const formatFileSize = (bytes: number | null) => {
     if (!bytes) return "N/A";
     const kb = bytes / 1024;
@@ -29,6 +35,34 @@ export const ResourcesSidebar = ({ selectedResource, onClose }: ResourcesSidebar
     }
     const mb = kb / 1024;
     return `${Math.round(mb * 10) / 10} MB`;
+  };
+
+  const handleDownload = async () => {
+    if (!selectedResource) return;
+    
+    setIsDownloading(true);
+    try {
+      // Create a signed URL for download
+      const { data: { signedUrl }, error: signedUrlError } = await supabase.storage
+        .from('resources')
+        .createSignedUrl(selectedResource.file_url, 60); // 60 seconds expiration
+
+      if (signedUrlError || !signedUrl) {
+        throw new Error("Failed to generate download URL");
+      }
+
+      // Trigger download using the signed URL
+      window.open(signedUrl, '_blank');
+    } catch (error) {
+      console.error('Download error:', error);
+      toast({
+        title: "Download failed",
+        description: "There was an error downloading the file. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   const renderPreview = () => {
@@ -40,7 +74,7 @@ export const ResourcesSidebar = ({ selectedResource, onClose }: ResourcesSidebar
       return (
         <div className="mb-6">
           <img 
-            src={selectedResource.file_url} 
+            src={`${supabase.storage.from('resources').getPublicUrl(selectedResource.file_url).data.publicUrl}`}
             alt={selectedResource.title}
             className="w-full rounded-lg"
           />
@@ -52,7 +86,7 @@ export const ResourcesSidebar = ({ selectedResource, onClose }: ResourcesSidebar
       return (
         <div className="mb-6 h-[500px]">
           <iframe
-            src={`${selectedResource.file_url}#view=FitH`}
+            src={`${supabase.storage.from('resources').getPublicUrl(selectedResource.file_url).data.publicUrl}#view=FitH`}
             className="w-full h-full rounded-lg border border-gray-200"
             title={selectedResource.title}
           />
@@ -111,9 +145,13 @@ export const ResourcesSidebar = ({ selectedResource, onClose }: ResourcesSidebar
           </div>
         </div>
 
-        <Button className="w-full" onClick={() => window.open(selectedResource.file_url)}>
+        <Button 
+          className="w-full" 
+          onClick={handleDownload}
+          disabled={isDownloading}
+        >
           <Download className="h-4 w-4 mr-2" />
-          Download ({formatFileSize(selectedResource.file_size)})
+          {isDownloading ? "Downloading..." : `Download (${formatFileSize(selectedResource.file_size)})`}
         </Button>
 
         <Separator />

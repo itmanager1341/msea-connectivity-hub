@@ -44,22 +44,24 @@ export const ResourceUploadModal = ({ isOpen, onClose, onUploadComplete }: Resou
       // Upload file to storage
       const fileExt = file.name.split('.').pop();
       const fileName = `${crypto.randomUUID()}.${fileExt}`;
-      const { error: uploadError, data } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('resources')
         .upload(fileName, file);
 
       if (uploadError) throw uploadError;
 
-      // Get the public URL
-      const { data: { publicUrl } } = supabase.storage
+      // Create a signed URL that will work for authenticated users
+      const { data: { signedUrl } } = await supabase.storage
         .from('resources')
-        .getPublicUrl(fileName);
+        .createSignedUrl(fileName, 31536000); // 1 year expiration
+
+      if (!signedUrl) throw new Error("Failed to generate signed URL");
 
       // Create resource record
       const { error: dbError } = await supabase.from('resources').insert({
         title,
         description,
-        file_url: publicUrl,
+        file_url: fileName, // Store just the filename, not the full URL
         file_type: file.type,
         file_size: file.size,
         created_by: (await supabase.auth.getUser()).data.user?.id
