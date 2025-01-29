@@ -1,13 +1,17 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, useLocation } from "react-router-dom";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { PortalHeader } from "@/components/portal/PortalHeader";
 import { PortalNavigation } from "@/components/portal/PortalNavigation";
 import { PortalRightSidebar } from "@/components/portal/PortalRightSidebar";
+import { ResourcesSidebar } from "@/components/resources/ResourcesSidebar";
 import ProfilePage from "./portal/ProfilePage";
 import DirectoryPage from "./portal/DirectoryPage";
 import ResourcesPage from "./portal/ResourcesPage";
 
 const MemberPortal = () => {
+  const location = useLocation();
+  const isResourcesPage = location.pathname.startsWith("/portal/resources");
+
   return (
     <SidebarProvider>
       <div className="min-h-screen w-full bg-[#F7FAFC]">
@@ -34,7 +38,7 @@ const MemberPortal = () => {
             </div>
           </main>
 
-          <PortalRightSidebar />
+          {isResourcesPage ? <ResourcesSidebar /> : <PortalRightSidebar />}
         </div>
       </div>
     </SidebarProvider>
