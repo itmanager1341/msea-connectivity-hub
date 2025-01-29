@@ -42,17 +42,17 @@ export const ResourcesSidebar = ({ selectedResource, onClose }: ResourcesSidebar
     
     setIsDownloading(true);
     try {
-      // Create a signed URL for download
-      const { data: { signedUrl }, error: signedUrlError } = await supabase.storage
+      // Create a signed URL for download using just the filename
+      const { data, error: signedUrlError } = await supabase.storage
         .from('resources')
         .createSignedUrl(selectedResource.file_url, 60); // 60 seconds expiration
 
-      if (signedUrlError || !signedUrl) {
+      if (signedUrlError || !data?.signedUrl) {
         throw new Error("Failed to generate download URL");
       }
 
       // Trigger download using the signed URL
-      window.open(signedUrl, '_blank');
+      window.open(data.signedUrl, '_blank');
     } catch (error) {
       console.error('Download error:', error);
       toast({
@@ -74,7 +74,10 @@ export const ResourcesSidebar = ({ selectedResource, onClose }: ResourcesSidebar
       return (
         <div className="mb-6">
           <img 
-            src={`${supabase.storage.from('resources').getPublicUrl(selectedResource.file_url).data.publicUrl}`}
+            src={supabase.storage
+              .from('resources')
+              .getPublicUrl(selectedResource.file_url)
+              .data.publicUrl}
             alt={selectedResource.title}
             className="w-full rounded-lg"
           />
@@ -86,7 +89,10 @@ export const ResourcesSidebar = ({ selectedResource, onClose }: ResourcesSidebar
       return (
         <div className="mb-6 h-[500px]">
           <iframe
-            src={`${supabase.storage.from('resources').getPublicUrl(selectedResource.file_url).data.publicUrl}#view=FitH`}
+            src={`${supabase.storage
+              .from('resources')
+              .getPublicUrl(selectedResource.file_url)
+              .data.publicUrl}#view=FitH`}
             className="w-full h-full rounded-lg border border-gray-200"
             title={selectedResource.title}
           />
