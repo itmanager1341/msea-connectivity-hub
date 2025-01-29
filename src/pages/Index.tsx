@@ -31,8 +31,8 @@ const Index = () => {
                   </Link>
                 </NavigationMenuItem>
                 <NavigationMenuItem>
-                  <Link to="/resources" className={navigationMenuTriggerStyle()}>
-                    Resources
+                  <Link to="/leadership" className={navigationMenuTriggerStyle()}>
+                    Leadership
                   </Link>
                 </NavigationMenuItem>
               </NavigationMenuList>
