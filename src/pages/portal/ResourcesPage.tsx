@@ -144,10 +144,6 @@ const ResourcesPage = ({ selectedResource, onResourceSelect }: ResourcesPageProp
             <Upload className="h-4 w-4 mr-2" />
             Upload
           </Button>
-          <Button size="sm">
-            <Plus className="h-4 w-4 mr-2" />
-            New Document
-          </Button>
         </div>
       </div>
       
