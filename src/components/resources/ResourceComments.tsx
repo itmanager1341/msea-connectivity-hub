@@ -74,12 +74,13 @@ export const ResourceComments = ({ resourceId }: ResourceCommentsProps) => {
   };
 
   const handleSubmit = async () => {
-    if (!newComment.trim()) return;
+    if (!newComment.trim() || !currentUserId) return;
 
     setIsSubmitting(true);
     const { error } = await supabase.from("resource_comments").insert({
       resource_id: resourceId,
       content: newComment.trim(),
+      user_id: currentUserId
     });
 
     setIsSubmitting(false);
@@ -138,7 +139,7 @@ export const ResourceComments = ({ resourceId }: ResourceCommentsProps) => {
           />
           <Button
             onClick={handleSubmit}
-            disabled={isSubmitting || !newComment.trim()}
+            disabled={isSubmitting || !newComment.trim() || !currentUserId}
             className="w-full"
           >
             Post Comment
