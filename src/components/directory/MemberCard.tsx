@@ -10,32 +10,32 @@ export const MemberCard = ({ profile }: { profile: Profile }) => {
   const initials = `${profile["First Name"]?.[0] || ""}${profile["Last Name"]?.[0] || ""}`;
 
   return (
-    <Card className="hover:shadow-lg transition-shadow duration-200">
+    <Card className="h-full flex flex-col hover:shadow-lg transition-shadow duration-200">
       <CardHeader className="flex flex-row items-center gap-4">
         <Avatar className="h-16 w-16">
           <AvatarFallback className="text-lg">{initials}</AvatarFallback>
         </Avatar>
-        <div>
-          <h3 className="text-xl font-semibold">{profile["Full Name"]}</h3>
-          <p className="text-sm text-muted-foreground">{profile["Job Title"]}</p>
+        <div className="flex-1 min-h-[4rem] flex flex-col justify-center">
+          <h3 className="text-xl font-semibold line-clamp-1">{profile["Full Name"]}</h3>
+          <p className="text-sm text-muted-foreground line-clamp-1">{profile["Job Title"]}</p>
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          <div>
-            <p className="font-medium">{profile["Company Name"]}</p>
-            <p className="text-sm text-muted-foreground">{profile.Industry}</p>
+      <CardContent className="flex-1 flex flex-col">
+        <div className="space-y-4 flex-1">
+          <div className="min-h-[4rem]">
+            <p className="font-medium line-clamp-1">{profile["Company Name"]}</p>
+            <p className="text-sm text-muted-foreground line-clamp-1">{profile.Industry}</p>
           </div>
           
-          <div className="text-sm text-muted-foreground">
+          <div className="text-sm text-muted-foreground min-h-[1.5rem]">
             {profile.City && profile["State/Region"] && (
-              <p>{profile.City}, {profile["State/Region"]}</p>
+              <p className="line-clamp-1">{profile.City}, {profile["State/Region"]}</p>
             )}
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 mt-auto pt-4">
             {profile.Email && (
-              <Button variant="outline" size="sm" asChild>
+              <Button variant="outline" size="sm" asChild className="flex-1">
                 <a href={`mailto:${profile.Email}`}>
                   <Mail className="h-4 w-4 mr-2" />
                   Email
@@ -44,7 +44,7 @@ export const MemberCard = ({ profile }: { profile: Profile }) => {
             )}
             
             {profile["Phone Number"] && (
-              <Button variant="outline" size="sm" asChild>
+              <Button variant="outline" size="sm" asChild className="flex-1">
                 <a href={`tel:${profile["Phone Number"]}`}>
                   <Phone className="h-4 w-4 mr-2" />
                   Call
@@ -53,7 +53,7 @@ export const MemberCard = ({ profile }: { profile: Profile }) => {
             )}
             
             {profile.LinkedIn && (
-              <Button variant="outline" size="sm" asChild>
+              <Button variant="outline" size="sm" asChild className="flex-1">
                 <a href={profile.LinkedIn} target="_blank" rel="noopener noreferrer">
                   <Linkedin className="h-4 w-4 mr-2" />
                   LinkedIn
