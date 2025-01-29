@@ -17,12 +17,20 @@ interface Resource {
   file_type: string;
   file_size: number | null;
   created_at: string;
+  checked_out_by: string | null;
+  checked_out_at: string | null;
+  version: number;
 }
 
 const MemberPortal = () => {
   const location = useLocation();
   const isResourcesPage = location.pathname.startsWith("/portal/resources");
   const [selectedResource, setSelectedResource] = useState<Resource | null>(null);
+  const [resourceKey, setResourceKey] = useState(0);
+
+  const handleResourceUpdate = () => {
+    setResourceKey(prev => prev + 1);
+  };
 
   return (
     <SidebarProvider>
@@ -31,7 +39,6 @@ const MemberPortal = () => {
         <div className="flex w-full pt-16">
           <PortalNavigation />
           
-          {/* Main Content Area */}
           <main className="flex-1 p-8">
             <div className="max-w-[1600px] mx-auto">
               <Routes>
@@ -49,6 +56,7 @@ const MemberPortal = () => {
                   path="/resources" 
                   element={
                     <ResourcesPage 
+                      key={resourceKey}
                       onResourceSelect={setSelectedResource}
                       selectedResource={selectedResource}
                     />
@@ -61,7 +69,8 @@ const MemberPortal = () => {
           {isResourcesPage ? (
             <ResourcesSidebar 
               selectedResource={selectedResource} 
-              onClose={() => setSelectedResource(null)} 
+              onClose={() => setSelectedResource(null)}
+              onResourceUpdate={handleResourceUpdate}
             />
           ) : (
             <PortalRightSidebar />

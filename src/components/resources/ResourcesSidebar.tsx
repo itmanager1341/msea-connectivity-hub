@@ -1,4 +1,4 @@
-import { FileText, Clock, Download, X } from "lucide-react";
+import { FileText, Clock, Download, X, Lock, Upload } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { ResourceComments } from "./ResourceComments";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
+import { Input } from "@/components/ui/input";
 
 interface Resource {
   id: string;
@@ -16,15 +17,21 @@ interface Resource {
   file_type: string;
   file_size: number | null;
   created_at: string;
+  checked_out_by: string | null;
+  checked_out_at: string | null;
+  version: number;
 }
 
 interface ResourcesSidebarProps {
   selectedResource: Resource | null;
   onClose: () => void;
+  onResourceUpdate: () => void;
 }
 
-export const ResourcesSidebar = ({ selectedResource, onClose }: ResourcesSidebarProps) => {
+export const ResourcesSidebar = ({ selectedResource, onClose, onResourceUpdate }: ResourcesSidebarProps) => {
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isChecking, setIsChecking] = useState(false);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
   const { toast } = useToast();
 
   const formatFileSize = (bytes: number | null) => {
@@ -42,7 +49,6 @@ export const ResourcesSidebar = ({ selectedResource, onClose }: ResourcesSidebar
     
     setIsDownloading(true);
     try {
-      // Extract just the filename from the file_url if it contains a full URL
       const filename = selectedResource.file_url.split('/').pop() || selectedResource.file_url;
       
       const { data, error: signedUrlError } = await supabase.storage
@@ -53,7 +59,6 @@ export const ResourcesSidebar = ({ selectedResource, onClose }: ResourcesSidebar
         throw new Error("Failed to generate download URL");
       }
 
-      // Open the signed URL in a new tab
       window.open(data.signedUrl, '_blank');
       
       toast({
@@ -69,6 +74,106 @@ export const ResourcesSidebar = ({ selectedResource, onClose }: ResourcesSidebar
       });
     } finally {
       setIsDownloading(false);
+    }
+  };
+
+  const handleCheckout = async () => {
+    if (!selectedResource) return;
+    
+    setIsChecking(true);
+    try {
+      const { error } = await supabase
+        .from('resources')
+        .update({
+          checked_out_by: (await supabase.auth.getUser()).data.user?.id,
+          checked_out_at: new Date().toISOString()
+        })
+        .eq('id', selectedResource.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Document checked out",
+        description: "You can now download and edit the document.",
+      });
+      
+      onResourceUpdate();
+    } catch (error) {
+      console.error('Checkout error:', error);
+      toast({
+        title: "Checkout failed",
+        description: "There was an error checking out the document.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsChecking(false);
+    }
+  };
+
+  const handleCheckin = async () => {
+    if (!selectedResource || !uploadFile) {
+      toast({
+        title: "No file selected",
+        description: "Please select a file to check in",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setIsChecking(true);
+    try {
+      const fileExt = uploadFile.name.split('.').pop();
+      const fileName = `${crypto.randomUUID()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('resources')
+        .upload(fileName, uploadFile);
+
+      if (uploadError) throw uploadError;
+
+      const { error: versionError } = await supabase
+        .from('resource_versions')
+        .insert({
+          resource_id: selectedResource.id,
+          version: selectedResource.version,
+          file_url: selectedResource.file_url,
+          file_type: selectedResource.file_type,
+          file_size: selectedResource.file_size,
+          created_by: (await supabase.auth.getUser()).data.user?.id
+        });
+
+      if (versionError) throw versionError;
+
+      const { error: updateError } = await supabase
+        .from('resources')
+        .update({
+          file_url: fileName,
+          file_type: uploadFile.type,
+          file_size: uploadFile.size,
+          version: selectedResource.version + 1,
+          checked_out_by: null,
+          checked_out_at: null
+        })
+        .eq('id', selectedResource.id);
+
+      if (updateError) throw updateError;
+
+      toast({
+        title: "Document checked in",
+        description: "New version has been uploaded successfully.",
+      });
+      
+      setUploadFile(null);
+      onResourceUpdate();
+    } catch (error) {
+      console.error('Checkin error:', error);
+      toast({
+        title: "Checkin failed",
+        description: "There was an error checking in the document.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsChecking(false);
     }
   };
 
@@ -129,6 +234,10 @@ export const ResourcesSidebar = ({ selectedResource, onClose }: ResourcesSidebar
     );
   }
 
+  const isCheckedOut = !!selectedResource.checked_out_by;
+  const currentUser = supabase.auth.getUser();
+  const isCheckedOutByMe = selectedResource.checked_out_by === currentUser.data.user?.id;
+
   return (
     <aside className="hidden lg:block w-[400px] shrink-0 bg-white border-l border-gray-200 p-6 overflow-y-auto">
       <div className="flex items-center justify-between mb-6">
@@ -142,7 +251,15 @@ export const ResourcesSidebar = ({ selectedResource, onClose }: ResourcesSidebar
 
       <div className="space-y-6">
         <div>
-          <h4 className="text-sm font-medium text-gray-900">{selectedResource?.title}</h4>
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-medium text-gray-900">{selectedResource?.title}</h4>
+            {isCheckedOut && (
+              <div className="flex items-center gap-2 text-amber-600">
+                <Lock className="h-4 w-4" />
+                <span className="text-xs">Checked Out</span>
+              </div>
+            )}
+          </div>
           {selectedResource?.description && (
             <p className="mt-1 text-sm text-gray-500">{selectedResource.description}</p>
           )}
@@ -156,19 +273,50 @@ export const ResourcesSidebar = ({ selectedResource, onClose }: ResourcesSidebar
           <div className="flex items-center gap-2 text-sm">
             <Clock className="h-4 w-4 text-gray-400" />
             <span className="text-gray-600">
-              Uploaded {selectedResource && format(new Date(selectedResource.created_at), "MMM d, yyyy")}
+              Version {selectedResource.version} • Uploaded {selectedResource && format(new Date(selectedResource.created_at), "MMM d, yyyy")}
             </span>
           </div>
         </div>
 
-        <Button 
-          className="w-full" 
-          onClick={handleDownload}
-          disabled={isDownloading}
-        >
-          <Download className="h-4 w-4 mr-2" />
-          {isDownloading ? "Downloading..." : `Download (${formatFileSize(selectedResource?.file_size)})`}
-        </Button>
+        {isCheckedOutByMe ? (
+          <div className="space-y-4">
+            <Input
+              type="file"
+              onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+              className="cursor-pointer"
+            />
+            <div className="flex gap-2">
+              <Button 
+                className="flex-1" 
+                onClick={handleCheckin}
+                disabled={isChecking || !uploadFile}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Check In
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <Button 
+              className="flex-1" 
+              onClick={handleDownload}
+              disabled={isDownloading}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              {isDownloading ? "Downloading..." : `Download (${formatFileSize(selectedResource?.file_size)})`}
+            </Button>
+            {!isCheckedOut && (
+              <Button
+                onClick={handleCheckout}
+                disabled={isChecking}
+              >
+                <Lock className="h-4 w-4 mr-2" />
+                Check Out
+              </Button>
+            )}
+          </div>
+        )}
 
         <Separator />
 

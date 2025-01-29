@@ -185,8 +185,54 @@ export type Database = {
           },
         ]
       }
+      resource_versions: {
+        Row: {
+          change_summary: string | null
+          created_at: string
+          created_by: string | null
+          file_size: number | null
+          file_type: string
+          file_url: string
+          id: string
+          resource_id: string
+          version: number
+        }
+        Insert: {
+          change_summary?: string | null
+          created_at?: string
+          created_by?: string | null
+          file_size?: number | null
+          file_type: string
+          file_url: string
+          id?: string
+          resource_id: string
+          version: number
+        }
+        Update: {
+          change_summary?: string | null
+          created_at?: string
+          created_by?: string | null
+          file_size?: number | null
+          file_type?: string
+          file_url?: string
+          id?: string
+          resource_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resource_versions_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       resources: {
         Row: {
+          checked_out_at: string | null
+          checked_out_by: string | null
           created_at: string
           created_by: string | null
           description: string | null
@@ -194,10 +240,14 @@ export type Database = {
           file_type: string
           file_url: string
           id: string
+          parent_resource_id: string | null
           title: string
           updated_at: string
+          version: number | null
         }
         Insert: {
+          checked_out_at?: string | null
+          checked_out_by?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -205,10 +255,14 @@ export type Database = {
           file_type: string
           file_url: string
           id?: string
+          parent_resource_id?: string | null
           title: string
           updated_at?: string
+          version?: number | null
         }
         Update: {
+          checked_out_at?: string | null
+          checked_out_by?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -216,10 +270,20 @@ export type Database = {
           file_type?: string
           file_url?: string
           id?: string
+          parent_resource_id?: string | null
           title?: string
           updated_at?: string
+          version?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "resources_parent_resource_id_fkey"
+            columns: ["parent_resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sync_preferences: {
         Row: {

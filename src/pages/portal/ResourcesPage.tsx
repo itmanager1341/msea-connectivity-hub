@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Grid, List, Upload, Plus, Search, File } from "lucide-react";
+import { Grid, List, Upload, Plus, Search, File, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -17,6 +17,9 @@ interface Resource {
   file_type: string;
   file_size: number | null;
   created_at: string;
+  checked_out_by: string | null;
+  checked_out_at: string | null;
+  version: number;
 }
 
 interface ResourcesPageProps {
@@ -39,7 +42,6 @@ const ResourcesPage = ({ selectedResource, onResourceSelect }: ResourcesPageProp
 
       if (error) throw error;
 
-      // Get signed URLs for each resource
       const resourcesWithUrls = await Promise.all(
         data.map(async (resource) => {
           const { data: { publicUrl } } = supabase
@@ -81,14 +83,19 @@ const ResourcesPage = ({ selectedResource, onResourceSelect }: ResourcesPageProp
           onClick={() => handleResourceClick(resource)}
         >
           <div className="flex flex-col items-center">
-            <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center mb-3">
+            <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center mb-3 relative">
               <File className="w-8 h-8 text-gray-400" />
+              {resource.checked_out_by && (
+                <div className="absolute -top-2 -right-2 bg-amber-100 p-1 rounded-full">
+                  <Lock className="w-4 h-4 text-amber-600" />
+                </div>
+              )}
             </div>
             <h3 className="text-sm font-medium text-gray-900 text-center mb-1">
               {resource.title}
             </h3>
             <p className="text-xs text-gray-500">
-              {new Date(resource.created_at).toLocaleDateString()}
+              Version {resource.version} • {new Date(resource.created_at).toLocaleDateString()}
             </p>
           </div>
         </Card>
@@ -107,13 +114,18 @@ const ResourcesPage = ({ selectedResource, onResourceSelect }: ResourcesPageProp
           onClick={() => handleResourceClick(resource)}
         >
           <div className="flex items-center gap-4">
-            <div className="w-10 h-10 bg-gray-100 rounded flex items-center justify-center">
+            <div className="w-10 h-10 bg-gray-100 rounded flex items-center justify-center relative">
               <File className="w-5 h-5 text-gray-400" />
+              {resource.checked_out_by && (
+                <div className="absolute -top-1 -right-1 bg-amber-100 p-1 rounded-full">
+                  <Lock className="w-3 h-3 text-amber-600" />
+                </div>
+              )}
             </div>
             <div className="flex-1">
               <h3 className="text-sm font-medium text-gray-900">{resource.title}</h3>
               <p className="text-xs text-gray-500">
-                {new Date(resource.created_at).toLocaleDateString()}
+                Version {resource.version} • {new Date(resource.created_at).toLocaleDateString()}
               </p>
             </div>
             <div className="text-xs text-gray-500">
