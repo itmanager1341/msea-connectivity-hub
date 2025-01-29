@@ -13,13 +13,13 @@ interface Comment {
   user_id: string;
 }
 
-interface ResourceCommentsProps {
-  resourceId: string;
-}
-
 interface UserProfile {
   "First Name": string | null;
   "Last Name": string | null;
+}
+
+interface ResourceCommentsProps {
+  resourceId: string;
 }
 
 export const ResourceComments = ({ resourceId }: ResourceCommentsProps) => {
@@ -44,13 +44,13 @@ export const ResourceComments = ({ resourceId }: ResourceCommentsProps) => {
   const fetchUserProfile = async (userId: string) => {
     if (userProfiles[userId]) return;
 
-    const { data: profile } = await supabase
+    const { data: profiles } = await supabase
       .from("profiles")
       .select("First Name, Last Name")
-      .eq("Email", userId)
-      .single();
+      .eq("Email", userId);
 
-    if (profile) {
+    if (profiles && profiles.length > 0) {
+      const profile = profiles[0] as UserProfile;
       setUserProfiles(prev => ({
         ...prev,
         [userId]: profile
