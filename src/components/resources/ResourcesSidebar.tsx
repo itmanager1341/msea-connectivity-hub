@@ -42,16 +42,24 @@ export const ResourcesSidebar = ({ selectedResource, onClose }: ResourcesSidebar
     
     setIsDownloading(true);
     try {
-      // Get signed URL for the file using just the filename stored in file_url
+      // Extract just the filename from the file_url if it contains a full URL
+      const filename = selectedResource.file_url.split('/').pop() || selectedResource.file_url;
+      
       const { data, error: signedUrlError } = await supabase.storage
         .from('resources')
-        .createSignedUrl(selectedResource.file_url, 60);
+        .createSignedUrl(filename, 60);
 
       if (signedUrlError || !data?.signedUrl) {
         throw new Error("Failed to generate download URL");
       }
 
+      // Open the signed URL in a new tab
       window.open(data.signedUrl, '_blank');
+      
+      toast({
+        title: "Download started",
+        description: "Your file should begin downloading shortly.",
+      });
     } catch (error) {
       console.error('Download error:', error);
       toast({
@@ -68,15 +76,17 @@ export const ResourcesSidebar = ({ selectedResource, onClose }: ResourcesSidebar
     if (!selectedResource) return null;
 
     const fileType = selectedResource.file_type.toLowerCase();
+    const filename = selectedResource.file_url.split('/').pop() || selectedResource.file_url;
     
     if (fileType.startsWith("image/")) {
+      const { data: { publicUrl } } = supabase.storage
+        .from('resources')
+        .getPublicUrl(filename);
+
       return (
         <div className="mb-6">
           <img 
-            src={supabase.storage
-              .from('resources')
-              .getPublicUrl(selectedResource.file_url)
-              .data.publicUrl}
+            src={publicUrl}
             alt={selectedResource.title}
             className="w-full rounded-lg"
           />
@@ -85,13 +95,14 @@ export const ResourcesSidebar = ({ selectedResource, onClose }: ResourcesSidebar
     }
     
     if (fileType === "application/pdf") {
+      const { data: { publicUrl } } = supabase.storage
+        .from('resources')
+        .getPublicUrl(filename);
+
       return (
         <div className="mb-6 h-[500px]">
           <iframe
-            src={`${supabase.storage
-              .from('resources')
-              .getPublicUrl(selectedResource.file_url)
-              .data.publicUrl}#view=FitH`}
+            src={`${publicUrl}#view=FitH`}
             className="w-full h-full rounded-lg border border-gray-200"
             title={selectedResource.title}
           />
@@ -131,8 +142,8 @@ export const ResourcesSidebar = ({ selectedResource, onClose }: ResourcesSidebar
 
       <div className="space-y-6">
         <div>
-          <h4 className="text-sm font-medium text-gray-900">{selectedResource.title}</h4>
-          {selectedResource.description && (
+          <h4 className="text-sm font-medium text-gray-900">{selectedResource?.title}</h4>
+          {selectedResource?.description && (
             <p className="mt-1 text-sm text-gray-500">{selectedResource.description}</p>
           )}
         </div>
@@ -140,12 +151,12 @@ export const ResourcesSidebar = ({ selectedResource, onClose }: ResourcesSidebar
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-sm">
             <FileText className="h-4 w-4 text-gray-400" />
-            <span className="text-gray-600">{selectedResource.file_type}</span>
+            <span className="text-gray-600">{selectedResource?.file_type}</span>
           </div>
           <div className="flex items-center gap-2 text-sm">
             <Clock className="h-4 w-4 text-gray-400" />
             <span className="text-gray-600">
-              Uploaded {format(new Date(selectedResource.created_at), "MMM d, yyyy")}
+              Uploaded {selectedResource && format(new Date(selectedResource.created_at), "MMM d, yyyy")}
             </span>
           </div>
         </div>
@@ -156,12 +167,12 @@ export const ResourcesSidebar = ({ selectedResource, onClose }: ResourcesSidebar
           disabled={isDownloading}
         >
           <Download className="h-4 w-4 mr-2" />
-          {isDownloading ? "Downloading..." : `Download (${formatFileSize(selectedResource.file_size)})`}
+          {isDownloading ? "Downloading..." : `Download (${formatFileSize(selectedResource?.file_size)})`}
         </Button>
 
         <Separator />
 
-        <ResourceComments resourceId={selectedResource.id} />
+        {selectedResource && <ResourceComments resourceId={selectedResource.id} />}
       </div>
     </aside>
   );
