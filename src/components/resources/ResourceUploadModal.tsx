@@ -41,9 +41,11 @@ export const ResourceUploadModal = ({ isOpen, onClose, onUploadComplete }: Resou
 
     setIsUploading(true);
     try {
-      // Upload file to storage
+      // Generate a unique filename
       const fileExt = file.name.split('.').pop();
       const fileName = `${crypto.randomUUID()}.${fileExt}`;
+
+      // Upload file to storage
       const { error: uploadError } = await supabase.storage
         .from('resources')
         .upload(fileName, file);
@@ -54,7 +56,7 @@ export const ResourceUploadModal = ({ isOpen, onClose, onUploadComplete }: Resou
       const { error: dbError } = await supabase.from('resources').insert({
         title,
         description,
-        file_url: fileName, // Store just the filename
+        file_url: fileName,
         file_type: file.type,
         file_size: file.size,
         created_by: (await supabase.auth.getUser()).data.user?.id
