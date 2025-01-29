@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Grid, List, Upload, Plus, Search, File, Folder } from "lucide-react";
+import { Grid, List, Upload, Plus, Search, File } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -64,6 +64,10 @@ const ResourcesPage = ({ selectedResource, onResourceSelect }: ResourcesPageProp
 
   const handleResourceClick = (resource: Resource) => {
     onResourceSelect(resource);
+  };
+
+  const handleUploadComplete = () => {
+    refetch();
   };
 
   const GridView = () => (
