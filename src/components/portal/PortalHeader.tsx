@@ -54,7 +54,7 @@ const UserMenu = ({ profile, session, onSignOut }: {
               className="bg-primary/10"
             />
             <AvatarFallback className="bg-primary/10 text-primary font-medium">
-              {profile ? getInitials() : <User className="h-4 w-4 text-primary" />}
+              {getInitials() || <User className="h-4 w-4 text-primary" />}
             </AvatarFallback>
           </Avatar>
         </Button>
@@ -106,9 +106,9 @@ export const PortalHeader = ({
 
       const { data, error } = await supabase
         .from("profiles")
-        .select("*")
+        .select("\"First Name\", \"Last Name\", \"Full Name\", \"Email\", record_id")
         .eq("Email", session.user.email)
-        .maybeSingle();
+        .single();
 
       if (error) throw error;
       return data as UserProfile;
