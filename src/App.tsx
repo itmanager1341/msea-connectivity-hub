@@ -65,7 +65,7 @@ function App() {
           
           {/* Protected routes */}
           <Route 
-            path="/admin" 
+            path="/admin/*" 
             element={
               session ? <AdminPortal /> : <Navigate to="/" replace />
             } 
