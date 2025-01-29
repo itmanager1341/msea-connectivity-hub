@@ -21,12 +21,19 @@ export const ResourceComments = ({ resourceId }: ResourceCommentsProps) => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     fetchComments();
     subscribeToComments();
+    getCurrentUser();
   }, [resourceId]);
+
+  const getCurrentUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    setCurrentUserId(user?.id || null);
+  };
 
   const fetchComments = async () => {
     const { data, error } = await supabase
@@ -153,7 +160,7 @@ export const ResourceComments = ({ resourceId }: ResourceCommentsProps) => {
                     {format(new Date(comment.created_at), "MMM d, yyyy 'at' h:mm a")}
                   </span>
                 </div>
-                {comment.user_id === supabase.auth.getUser()?.data?.user?.id && (
+                {comment.user_id === currentUserId && (
                   <Button
                     variant="ghost"
                     size="icon"
