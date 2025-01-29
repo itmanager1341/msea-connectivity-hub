@@ -42,7 +42,6 @@ export const ResourcesSidebar = ({ selectedResource, onClose }: ResourcesSidebar
     
     setIsDownloading(true);
     try {
-      // Create a signed URL for download using just the filename
       const { data, error: signedUrlError } = await supabase.storage
         .from('resources')
         .createSignedUrl(selectedResource.file_url, 60); // 60 seconds expiration
@@ -51,7 +50,6 @@ export const ResourcesSidebar = ({ selectedResource, onClose }: ResourcesSidebar
         throw new Error("Failed to generate download URL");
       }
 
-      // Trigger download using the signed URL
       window.open(data.signedUrl, '_blank');
     } catch (error) {
       console.error('Download error:', error);

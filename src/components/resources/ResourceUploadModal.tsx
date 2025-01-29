@@ -50,18 +50,11 @@ export const ResourceUploadModal = ({ isOpen, onClose, onUploadComplete }: Resou
 
       if (uploadError) throw uploadError;
 
-      // Create a signed URL that will work for authenticated users
-      const { data: { signedUrl } } = await supabase.storage
-        .from('resources')
-        .createSignedUrl(fileName, 31536000); // 1 year expiration
-
-      if (!signedUrl) throw new Error("Failed to generate signed URL");
-
-      // Create resource record
+      // Create resource record with just the filename
       const { error: dbError } = await supabase.from('resources').insert({
         title,
         description,
-        file_url: fileName, // Store just the filename, not the full URL
+        file_url: fileName, // Store just the filename
         file_type: file.type,
         file_size: file.size,
         created_by: (await supabase.auth.getUser()).data.user?.id
