@@ -5,6 +5,7 @@ import { PortalNavigation } from "@/components/portal/PortalNavigation";
 import { PortalRightSidebar } from "@/components/portal/PortalRightSidebar";
 import ProfilePage from "./portal/ProfilePage";
 import DirectoryPage from "./portal/DirectoryPage";
+import ResourcesPage from "./portal/ResourcesPage";
 
 const MemberPortal = () => {
   return (
@@ -28,6 +29,7 @@ const MemberPortal = () => {
                 } />
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/directory" element={<DirectoryPage />} />
+                <Route path="/resources" element={<ResourcesPage />} />
               </Routes>
             </div>
           </main>
