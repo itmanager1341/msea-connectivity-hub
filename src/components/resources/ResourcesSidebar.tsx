@@ -82,7 +82,8 @@ export const ResourcesSidebar = ({ selectedResource, onClose, onResourceUpdate }
     
     setIsChecking(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data } = await supabase.auth.getUser();
+      const user = data?.user;
       
       const { error } = await supabase
         .from('resources')
@@ -124,7 +125,8 @@ export const ResourcesSidebar = ({ selectedResource, onClose, onResourceUpdate }
     
     setIsChecking(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data } = await supabase.auth.getUser();
+      const user = data?.user;
       
       const fileExt = uploadFile.name.split('.').pop();
       const fileName = `${crypto.randomUUID()}.${fileExt}`;
@@ -239,8 +241,12 @@ export const ResourcesSidebar = ({ selectedResource, onClose, onResourceUpdate }
   }
 
   const isCheckedOut = !!selectedResource.checked_out_by;
-  const currentUser = supabase.auth.getUser();
-  const isCheckedOutByMe = selectedResource.checked_out_by === currentUser.data.user?.id;
+  const currentUserPromise = supabase.auth.getUser();
+  const isCheckedOutByMe = async () => {
+    const { data } = await currentUserPromise;
+    const user = data?.user;
+    return selectedResource.checked_out_by === user?.id;
+  };
 
   return (
     <aside className="hidden lg:block w-[400px] shrink-0 bg-white border-l border-gray-200 p-6 overflow-y-auto">
@@ -282,7 +288,7 @@ export const ResourcesSidebar = ({ selectedResource, onClose, onResourceUpdate }
           </div>
         </div>
 
-        {isCheckedOutByMe ? (
+        {await isCheckedOutByMe() ? (
           <div className="space-y-4">
             <Input
               type="file"
