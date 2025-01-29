@@ -17,11 +17,17 @@ interface ResourceCommentsProps {
   resourceId: string;
 }
 
+interface UserProfile {
+  "First Name": string | null;
+  "Last Name": string | null;
+}
+
 export const ResourceComments = ({ resourceId }: ResourceCommentsProps) => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [userProfiles, setUserProfiles] = useState<Record<string, UserProfile>>({});
   const { toast } = useToast();
 
   useEffect(() => {
@@ -33,6 +39,31 @@ export const ResourceComments = ({ resourceId }: ResourceCommentsProps) => {
   const getCurrentUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     setCurrentUserId(user?.id || null);
+  };
+
+  const fetchUserProfile = async (userId: string) => {
+    if (userProfiles[userId]) return;
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("First Name, Last Name")
+      .eq("Email", userId)
+      .single();
+
+    if (profile) {
+      setUserProfiles(prev => ({
+        ...prev,
+        [userId]: profile
+      }));
+    }
+  };
+
+  const getInitials = (userId: string) => {
+    const profile = userProfiles[userId];
+    if (profile?.["First Name"] && profile?.["Last Name"]) {
+      return `${profile["First Name"][0]}${profile["Last Name"][0]}`;
+    }
+    return userId.slice(0, 2).toUpperCase();
   };
 
   const fetchComments = async () => {
@@ -48,6 +79,8 @@ export const ResourceComments = ({ resourceId }: ResourceCommentsProps) => {
     }
 
     setComments(data);
+    // Fetch profiles for all comment authors
+    data.forEach(comment => fetchUserProfile(comment.user_id));
   };
 
   const subscribeToComments = () => {
@@ -155,7 +188,7 @@ export const ResourceComments = ({ resourceId }: ResourceCommentsProps) => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="h-6 w-6 rounded-full bg-gray-100 flex items-center justify-center text-xs font-medium">
-                    {comment.user_id.slice(0, 2).toUpperCase()}
+                    {getInitials(comment.user_id)}
                   </div>
                   <span className="text-xs text-gray-500">
                     {format(new Date(comment.created_at), "MMM d, yyyy 'at' h:mm a")}
