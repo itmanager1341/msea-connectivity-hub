@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ResourceUploadModal } from "@/components/resources/ResourceUploadModal";
+import { ResourcesSidebar } from "@/components/resources/ResourcesSidebar";
 
 interface Resource {
   id: string;
@@ -23,6 +24,7 @@ const ResourcesPage = () => {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchQuery, setSearchQuery] = useState("");
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [selectedResource, setSelectedResource] = useState<Resource | null>(null);
 
   const { data: resources, isLoading, refetch } = useQuery({
     queryKey: ["resources"],
@@ -33,7 +35,23 @@ const ResourcesPage = () => {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      return data as Resource[];
+
+      // Get signed URLs for each resource
+      const resourcesWithUrls = await Promise.all(
+        data.map(async (resource) => {
+          const { data: { publicUrl } } = supabase
+            .storage
+            .from("resources")
+            .getPublicUrl(resource.file_url);
+
+          return {
+            ...resource,
+            file_url: publicUrl
+          };
+        })
+      );
+
+      return resourcesWithUrls as Resource[];
     },
   });
 
@@ -45,10 +63,20 @@ const ResourcesPage = () => {
     refetch();
   };
 
+  const handleResourceClick = (resource: Resource) => {
+    setSelectedResource(resource);
+  };
+
   const GridView = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
       {filteredResources?.map((resource) => (
-        <Card key={resource.id} className="p-4 hover:shadow-lg transition-shadow">
+        <Card 
+          key={resource.id} 
+          className={`p-4 hover:shadow-lg transition-shadow cursor-pointer ${
+            selectedResource?.id === resource.id ? 'ring-2 ring-primary' : ''
+          }`}
+          onClick={() => handleResourceClick(resource)}
+        >
           <div className="flex flex-col items-center">
             <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center mb-3">
               <File className="w-8 h-8 text-gray-400" />
@@ -68,7 +96,13 @@ const ResourcesPage = () => {
   const ListView = () => (
     <div className="space-y-2">
       {filteredResources?.map((resource) => (
-        <Card key={resource.id} className="p-4 hover:bg-gray-50">
+        <Card 
+          key={resource.id} 
+          className={`p-4 hover:bg-gray-50 cursor-pointer ${
+            selectedResource?.id === resource.id ? 'ring-2 ring-primary' : ''
+          }`}
+          onClick={() => handleResourceClick(resource)}
+        >
           <div className="flex items-center gap-4">
             <div className="w-10 h-10 bg-gray-100 rounded flex items-center justify-center">
               <File className="w-5 h-5 text-gray-400" />
@@ -154,17 +188,24 @@ const ResourcesPage = () => {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 bg-white rounded-lg shadow-sm p-6">
-        {isLoading ? (
-          <div className="text-center text-gray-500">Loading resources...</div>
-        ) : filteredResources?.length === 0 ? (
-          <div className="text-center text-gray-500">
-            <p>No resources found</p>
-            <p className="text-sm">Upload a document or create a new one to get started</p>
-          </div>
-        ) : (
-          viewMode === "grid" ? <GridView /> : <ListView />
-        )}
+      <div className="flex-1 flex">
+        <div className="flex-1 bg-white rounded-lg shadow-sm p-6">
+          {isLoading ? (
+            <div className="text-center text-gray-500">Loading resources...</div>
+          ) : filteredResources?.length === 0 ? (
+            <div className="text-center text-gray-500">
+              <p>No resources found</p>
+              <p className="text-sm">Upload a document or create a new one to get started</p>
+            </div>
+          ) : (
+            viewMode === "grid" ? <GridView /> : <ListView />
+          )}
+        </div>
+
+        <ResourcesSidebar 
+          selectedResource={selectedResource} 
+          onClose={() => setSelectedResource(null)} 
+        />
       </div>
 
       <ResourceUploadModal
