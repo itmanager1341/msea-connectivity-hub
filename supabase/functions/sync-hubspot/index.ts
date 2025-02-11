@@ -179,65 +179,98 @@ serve(async (req) => {
         let offset = 0;
         const count = 100 // Increased page size for efficiency
 
-        // Fetch all contacts with pagination
-        while (hasMore) {
-          console.log(`Fetching contacts page with offset ${offset}...`)
-          const propertyParams = [
-            'firstname',
-            'lastname',
-            'email',
-            'company',
-            'phone',
-            'jobtitle',
-            'membership',
-            'industry',
-            'state',
-            'city',
-            'bio',
-            'linkedin',
-            'headshot'
-          ].map(prop => `property=${prop}`).join('&');
-          
-          const hubspotResponse = await fetch(
-            `https://api.hubapi.com/contactslistseg/v1/lists/3190/contacts/all?${propertyParams}&count=${count}&vidOffset=${offset}`,
-            {
-              headers: {
-                'Authorization': `Bearer ${HUBSPOT_API_KEY}`,
-                'Content-Type': 'application/json',
-              },
-              signal: controller.signal
+        // If we're syncing specific members, just get those
+        if (memberIds && memberIds.length > 0) {
+          console.log('Syncing specific members:', memberIds);
+          for (const memberId of memberIds) {
+            const propertyParams = [
+              'firstname', 'lastname', 'email', 'company', 
+              'phone', 'jobtitle', 'industry', 'state', 
+              'city', 'bio', 'linkedin', 'headshot',
+              'membership'
+            ].map(prop => `property=${prop}`).join('&');
+            
+            const hubspotResponse = await fetch(
+              `https://api.hubapi.com/contacts/v1/contact/vid/${memberId}?${propertyParams}`,
+              {
+                headers: {
+                  'Authorization': `Bearer ${HUBSPOT_API_KEY}`,
+                  'Content-Type': 'application/json',
+                },
+                signal: controller.signal
+              }
+            )
+
+            if (!hubspotResponse.ok) {
+              const errorText = await hubspotResponse.text()
+              console.error('HubSpot API error response:', errorText)
+              throw new Error(`HubSpot API error: ${hubspotResponse.statusText}. Details: ${errorText}`)
             }
-          )
 
-          if (!hubspotResponse.ok) {
-            const errorText = await hubspotResponse.text()
-            console.error('HubSpot API error response:', errorText)
-            throw new Error(`HubSpot API error: ${hubspotResponse.statusText}. Details: ${errorText}`)
+            const contact = await hubspotResponse.json()
+            allContacts.push(contact)
           }
+        } else {
+          // Fetch all contacts with pagination for full sync
+          while (hasMore) {
+            console.log(`Fetching contacts page with offset ${offset}...`)
+            const propertyParams = [
+              'firstname',
+              'lastname',
+              'email',
+              'company',
+              'phone',
+              'jobtitle',
+              'membership',
+              'industry',
+              'state',
+              'city',
+              'bio',
+              'linkedin',
+              'headshot'
+            ].map(prop => `property=${prop}`).join('&');
+            
+            const hubspotResponse = await fetch(
+              `https://api.hubapi.com/contactslistseg/v1/lists/3190/contacts/all?${propertyParams}&count=${count}&vidOffset=${offset}`,
+              {
+                headers: {
+                  'Authorization': `Bearer ${HUBSPOT_API_KEY}`,
+                  'Content-Type': 'application/json',
+                },
+                signal: controller.signal
+              }
+            )
 
-          const hubspotData = await hubspotResponse.json()
-          allContacts.push(...(hubspotData.contacts || []))
-          
-          // Check if there are more contacts to fetch
-          hasMore = hubspotData['has-more']
-          offset = hubspotData['vid-offset']
+            if (!hubspotResponse.ok) {
+              const errorText = await hubspotResponse.text()
+              console.error('HubSpot API error response:', errorText)
+              throw new Error(`HubSpot API error: ${hubspotResponse.statusText}. Details: ${errorText}`)
+            }
 
-          console.log(`Received ${hubspotData.contacts?.length || 0} contacts in this page`)
-          
-          if (!hasMore) {
-            console.log('No more contacts to fetch')
-            break
+            const hubspotData = await hubspotResponse.json()
+            allContacts.push(...(hubspotData.contacts || []))
+            
+            // Check if there are more contacts to fetch
+            hasMore = hubspotData['has-more']
+            offset = hubspotData['vid-offset']
+
+            console.log(`Received ${hubspotData.contacts?.length || 0} contacts in this page`)
+            
+            if (!hasMore) {
+              console.log('No more contacts to fetch')
+              break
+            }
           }
         }
 
         console.log('Total number of contacts received:', allContacts.length)
-
         clearTimeout(timeout)
 
         // Get existing profiles from Supabase
         const { data: existingProfiles, error: fetchError } = await supabase
           .from('profiles')
           .select('*')
+          .in('record_id', memberIds || []) // Only fetch relevant profiles
 
         if (fetchError) {
           throw new Error(`Failed to fetch existing profiles: ${fetchError.message}`)
@@ -257,7 +290,7 @@ serve(async (req) => {
 
         // Process each contact from HubSpot
         for (const contact of allContacts) {
-          const vid = parseInt(contact.vid)
+          const vid = parseInt(contact.vid || contact.vid)
           const props = contact.properties
 
           const profile: Profile = {
@@ -280,7 +313,7 @@ serve(async (req) => {
             "Email Domain": null,
             "Profession - FSI": null,
             "Membership": props.membership?.value || '',
-            active: true
+            active: true // Always set to true since we're only getting active members
           }
 
           if (existingProfilesMap.has(vid)) {
@@ -292,24 +325,28 @@ serve(async (req) => {
           }
         }
 
-        // Create a set of current HubSpot contact IDs
-        const currentHubspotIds = new Set(allContacts.map(c => parseInt(c.vid)))
-        console.log('Current HubSpot IDs:', Array.from(currentHubspotIds))
+        // Only check for inactive profiles during a full sync
+        let inactiveUpdates: any[] = [];
+        if (!memberIds || memberIds.length === 0) {
+          // Create a set of current HubSpot contact IDs
+          const currentHubspotIds = new Set(allContacts.map(c => parseInt(c.vid)))
+          console.log('Full sync - checking for inactive members...');
+          
+          // Find profiles to mark as inactive (those not in current HubSpot list)
+          inactiveUpdates = existingProfiles
+            ?.filter(profile => {
+              const isNotInHubspot = !currentHubspotIds.has(profile.record_id)
+              const isCurrentlyActive = profile.active
+              console.log(`Profile ${profile.record_id}: in HubSpot? ${!isNotInHubspot}, active? ${isCurrentlyActive}`)
+              return isNotInHubspot && isCurrentlyActive
+            })
+            .map(profile => ({
+              record_id: profile.record_id,
+              active: false
+            })) || []
 
-        // Find profiles to mark as inactive (those not in current HubSpot list)
-        const inactiveUpdates = existingProfiles
-          ?.filter(profile => {
-            const isNotInHubspot = !currentHubspotIds.has(profile.record_id)
-            const isCurrentlyActive = profile.active
-            console.log(`Profile ${profile.record_id}: in HubSpot? ${!isNotInHubspot}, active? ${isCurrentlyActive}`)
-            return isNotInHubspot && isCurrentlyActive
-          })
-          .map(profile => ({
-            record_id: profile.record_id,
-            active: false
-          })) || []
-
-        console.log(`Found ${inactiveUpdates.length} profiles to mark as inactive:`, inactiveUpdates)
+          console.log(`Found ${inactiveUpdates.length} profiles to mark as inactive:`, inactiveUpdates)
+        }
 
         // Process database operations in batches
         const batchSize = 50;
