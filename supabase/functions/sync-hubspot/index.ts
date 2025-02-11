@@ -190,9 +190,11 @@ serve(async (req) => {
               'membership'
             ].map(prop => `property=${prop}`).join('&');
             
+            // Changed endpoint and method for fetching single contact
             const hubspotResponse = await fetch(
-              `https://api.hubapi.com/contacts/v1/contact/vid/${memberId}?${propertyParams}`,
+              `https://api.hubapi.com/contactslistseg/v1/lists/3190/contacts/all?${propertyParams}&count=100&vidOffset=0&property=vid&vid=${memberId}`,
               {
+                method: 'GET',
                 headers: {
                   'Authorization': `Bearer ${HUBSPOT_API_KEY}`,
                   'Content-Type': 'application/json',
@@ -207,8 +209,12 @@ serve(async (req) => {
               throw new Error(`HubSpot API error: ${hubspotResponse.statusText}. Details: ${errorText}`)
             }
 
-            const contact = await hubspotResponse.json()
-            allContacts.push(contact)
+            const response = await hubspotResponse.json()
+            if (response.contacts && response.contacts.length > 0) {
+              allContacts.push(...response.contacts)
+            } else {
+              console.log(`No contact found for ID ${memberId} in active members list`)
+            }
           }
         } else {
           // Fetch all contacts with pagination for full sync
