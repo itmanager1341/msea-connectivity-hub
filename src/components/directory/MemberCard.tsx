@@ -1,5 +1,6 @@
+
 import { Mail, Linkedin, Phone } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Database } from "@/integrations/supabase/types";
@@ -13,10 +14,25 @@ export const MemberCard = ({ profile }: { profile: Profile }) => {
     <Card className="h-full flex flex-col hover:shadow-lg transition-shadow duration-200">
       <CardHeader className="flex flex-row items-center gap-4">
         <Avatar className="h-16 w-16">
+          <AvatarImage
+            src={`https://www.linkedin.com/ritual/api/proxy/profilePicture/${profile.LinkedIn?.split('/').pop()}`}
+            alt={profile["Full Name"] || ""}
+          />
           <AvatarFallback className="text-lg">{initials}</AvatarFallback>
         </Avatar>
         <div className="flex-1 min-h-[4rem] flex flex-col justify-center">
-          <h3 className="text-xl font-semibold line-clamp-1">{profile["Full Name"]}</h3>
+          {profile.LinkedIn ? (
+            <a 
+              href={profile.LinkedIn}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xl font-semibold line-clamp-1 hover:underline"
+            >
+              {profile["Full Name"]}
+            </a>
+          ) : (
+            <h3 className="text-xl font-semibold line-clamp-1">{profile["Full Name"]}</h3>
+          )}
           <p className="text-sm text-muted-foreground line-clamp-1">{profile["Job Title"]}</p>
         </div>
       </CardHeader>
