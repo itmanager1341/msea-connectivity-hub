@@ -302,8 +302,8 @@ serve(async (req) => {
         const inactiveUpdates = existingProfiles
           ?.filter(profile => !currentHubspotIds.has(profile['Record ID']) && profile.active)
           .map(profile => ({
-            'Record ID': profile['Record ID'],
-            'active': false
+            record_id: profile['Record ID'],
+            active: false
           })) || []
 
         console.log(`Processing ${updates.length} updates, ${inserts.length} inserts, and ${inactiveUpdates.length} inactive updates`)
@@ -331,13 +331,15 @@ serve(async (req) => {
         for (let i = 0; i < inactiveUpdates.length; i += batchSize) {
           const batch = inactiveUpdates.slice(i, i + batchSize)
           console.log(`Processing batch of ${batch.length} inactive profiles...`)
+          const inactiveProfileUpdates = batch.map(profile => ({
+            record_id: profile.record_id, // Changed from 'Record ID' to record_id
+            active: false
+          }))
+          console.log('Inactive profiles to update:', inactiveProfileUpdates)
           batchOperations.push(
             supabase
               .from('profiles')
-              .upsert(batch.map(profile => ({
-                record_id: profile['Record ID'],
-                active: false
-              })), {
+              .upsert(inactiveProfileUpdates, {
                 onConflict: 'record_id',
                 ignoreDuplicates: false
               })
