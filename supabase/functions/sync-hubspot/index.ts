@@ -312,33 +312,35 @@ serve(async (req) => {
         const batchSize = 50
         const batchOperations = []
 
-        // Process updates
-        for (let i = 0; i < updates.length; i += batchSize) {
-          const batch = updates.slice(i, i + batchSize)
+        // Process updates - using upsert instead of separate update/insert
+        const allProfiles = [...updates, ...inserts]
+        for (let i = 0; i < allProfiles.length; i += batchSize) {
+          const batch = allProfiles.slice(i, i + batchSize)
+          console.log(`Processing batch of ${batch.length} profiles...`)
           batchOperations.push(
             supabase
               .from('profiles')
-              .upsert(batch)
-          )
-        }
-
-        // Process inserts
-        for (let i = 0; i < inserts.length; i += batchSize) {
-          const batch = inserts.slice(i, i + batchSize)
-          batchOperations.push(
-            supabase
-              .from('profiles')
-              .insert(batch)
+              .upsert(batch, {
+                onConflict: 'record_id',
+                ignoreDuplicates: false
+              })
           )
         }
 
         // Process inactive updates
         for (let i = 0; i < inactiveUpdates.length; i += batchSize) {
           const batch = inactiveUpdates.slice(i, i + batchSize)
+          console.log(`Processing batch of ${batch.length} inactive profiles...`)
           batchOperations.push(
             supabase
               .from('profiles')
-              .upsert(batch)
+              .upsert(batch.map(profile => ({
+                record_id: profile['Record ID'],
+                active: false
+              })), {
+                onConflict: 'record_id',
+                ignoreDuplicates: false
+              })
           )
         }
 
