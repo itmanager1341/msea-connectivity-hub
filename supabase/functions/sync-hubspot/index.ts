@@ -247,13 +247,50 @@ serve(async (req) => {
 
         // Create a map of existing profiles for quick lookup
         const existingProfilesMap = new Map(
-          existingProfiles?.map(profile => [profile['Record ID'], profile]) || []
+          existingProfiles?.map(profile => [profile.record_id, profile]) || []
         )
 
-        const updates: Profile[] = [];
-        const inserts: Profile[] = [];
-        let updatedCount = 0;
-        let insertedCount = 0;
+        const updates: Profile[] = []
+        const inserts: Profile[] = []
+        let updatedCount = 0
+        let insertedCount = 0
+
+        // Process each contact from HubSpot
+        for (const contact of allContacts) {
+          const vid = parseInt(contact.vid)
+          const props = contact.properties
+
+          const profile: Profile = {
+            record_id: vid,
+            "First Name": props.firstname?.value || '',
+            "Last Name": props.lastname?.value || '',
+            "Full Name": `${props.firstname?.value || ''} ${props.lastname?.value || ''}`.trim(),
+            "Company Name": props.company?.value || '',
+            "Job Title": props.jobtitle?.value || '',
+            "Phone Number": props.phone?.value || '',
+            "Industry": props.industry?.value || '',
+            "State/Region": props.state?.value || '',
+            "City": props.city?.value || '',
+            "Email": props.email?.value || '',
+            "Bio": props.bio?.value || '',
+            "LinkedIn": props.linkedin?.value || '',
+            "Headshot": props.headshot?.value || '',
+            "Member Since Date": null,
+            "Create Date": null,
+            "Email Domain": null,
+            "Profession - FSI": null,
+            "Membership": props.membership?.value || '',
+            active: true
+          }
+
+          if (existingProfilesMap.has(vid)) {
+            updates.push(profile)
+            updatedCount++
+          } else {
+            inserts.push(profile)
+            insertedCount++
+          }
+        }
 
         // Create a set of current HubSpot contact IDs
         const currentHubspotIds = new Set(allContacts.map(c => parseInt(c.vid)))
@@ -262,17 +299,17 @@ serve(async (req) => {
         // Find profiles to mark as inactive (those not in current HubSpot list)
         const inactiveUpdates = existingProfiles
           ?.filter(profile => {
-            const isNotInHubspot = !currentHubspotIds.has(profile.record_id);
-            const isCurrentlyActive = profile.active;
-            console.log(`Profile ${profile.record_id}: in HubSpot? ${!isNotInHubspot}, active? ${isCurrentlyActive}`);
-            return isNotInHubspot && isCurrentlyActive;
+            const isNotInHubspot = !currentHubspotIds.has(profile.record_id)
+            const isCurrentlyActive = profile.active
+            console.log(`Profile ${profile.record_id}: in HubSpot? ${!isNotInHubspot}, active? ${isCurrentlyActive}`)
+            return isNotInHubspot && isCurrentlyActive
           })
           .map(profile => ({
             record_id: profile.record_id,
             active: false
-          })) || [];
+          })) || []
 
-        console.log(`Found ${inactiveUpdates.length} profiles to mark as inactive:`, inactiveUpdates);
+        console.log(`Found ${inactiveUpdates.length} profiles to mark as inactive:`, inactiveUpdates)
 
         // Process database operations in batches
         const batchSize = 50;
