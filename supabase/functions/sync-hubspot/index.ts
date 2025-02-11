@@ -34,6 +34,7 @@ interface Profile {
   'Email Domain'?: string | null;
   'Bio'?: string;
   'LinkedIn'?: string;
+  'Headshot'?: string;
   'active': boolean;
 }
 
@@ -193,7 +194,8 @@ serve(async (req) => {
             'state',
             'city',
             'bio',
-            'linkedin'
+            'linkedin',
+            'headshot'
           ].map(prop => `property=${prop}`).join('&');
           
           const hubspotResponse = await fetch(
@@ -282,6 +284,7 @@ serve(async (req) => {
             'Email Domain': primaryEmail ? primaryEmail.split('@')[1] : null,
             'Bio': properties.bio?.value,
             'LinkedIn': properties.linkedin?.value,
+            'Headshot': properties.headshot?.value,
             'active': true  // All contacts in MSEA list are active
           }
 

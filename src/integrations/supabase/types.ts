@@ -95,6 +95,7 @@ export type Database = {
           "Email Domain": string | null
           "First Name": string | null
           "Full Name": string | null
+          Headshot: string | null
           Industry: string | null
           "Job Title": string | null
           "Last Name": string | null
@@ -116,6 +117,7 @@ export type Database = {
           "Email Domain"?: string | null
           "First Name"?: string | null
           "Full Name"?: string | null
+          Headshot?: string | null
           Industry?: string | null
           "Job Title"?: string | null
           "Last Name"?: string | null
@@ -137,6 +139,7 @@ export type Database = {
           "Email Domain"?: string | null
           "First Name"?: string | null
           "Full Name"?: string | null
+          Headshot?: string | null
           Industry?: string | null
           "Job Title"?: string | null
           "Last Name"?: string | null

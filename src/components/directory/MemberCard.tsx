@@ -15,7 +15,7 @@ export const MemberCard = ({ profile }: { profile: Profile }) => {
       <CardHeader className="flex flex-row items-center gap-4">
         <Avatar className="h-16 w-16">
           <AvatarImage
-            src={`https://www.linkedin.com/ritual/api/proxy/profilePicture/${profile.LinkedIn?.split('/').pop()}`}
+            src={profile.Headshot || ""}
             alt={profile["Full Name"] || ""}
           />
           <AvatarFallback className="text-lg">{initials}</AvatarFallback>
