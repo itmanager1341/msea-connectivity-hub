@@ -5,7 +5,6 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 interface HubSpotContact {
   vid: number;
   properties: Record<string, any>;
-  identities: any[];
 }
 
 interface Profile {
@@ -51,23 +50,36 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Function to fetch contacts from HubSpot
-    const fetchHubspotContacts = async (specificIds?: number[]) => {
-      const propertyParams = [
+    // Function to check if contact is in active list
+    const checkActiveList = async (contactId: number): Promise<boolean> => {
+      const url = `https://api.hubapi.com/contactslistseg/v1/lists/3190/has-contacts?vids=${contactId}`;
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${HUBSPOT_API_KEY}`,
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HubSpot API error checking active list: ${await response.text()}`);
+      }
+
+      const data = await response.json();
+      console.log(`Active list check for ${contactId}:`, data);
+      return data?.hasContacts || false;
+    }
+
+    // Function to fetch a single contact from HubSpot
+    const fetchHubspotContact = async (contactId: number) => {
+      const properties = [
         'firstname', 'lastname', 'email', 'company', 
         'phone', 'jobtitle', 'industry', 'state', 
         'city', 'bio', 'linkedin', 'headshot',
         'membership'
-      ].map(prop => `property=${prop}`).join('&');
+      ];
 
-      let url = `https://api.hubapi.com/contactslistseg/v1/lists/3190/contacts/all?${propertyParams}`
-      
-      // If specific IDs provided, add vid filter
-      if (specificIds && specificIds.length > 0) {
-        url += `&vid=${specificIds[0]}`
-      }
-
-      console.log('Fetching from HubSpot URL:', url);
+      const url = `https://api.hubapi.com/crm/v3/objects/contacts/${contactId}?properties=${properties.join(',')}`;
+      console.log('Fetching contact from HubSpot URL:', url);
       
       const response = await fetch(url, {
         headers: {
@@ -77,46 +89,47 @@ serve(async (req) => {
       });
 
       if (!response.ok) {
-        throw new Error(`HubSpot API error: ${await response.text()}`);
+        throw new Error(`HubSpot API error fetching contact: ${await response.text()}`);
       }
 
       const data = await response.json();
-      console.log('HubSpot response:', data);
-      return data.contacts || [];
+      console.log('HubSpot contact data:', data);
+      return data;
     }
 
-    // Fetch contacts from HubSpot
-    const hubspotContacts = await fetchHubspotContacts(memberIds);
-    console.log(`Retrieved ${hubspotContacts.length} contacts from HubSpot`);
-
-    // Process contacts and update Supabase
-    for (const contact of hubspotContacts) {
-      const vid = parseInt(contact.vid);
-      const props = contact.properties;
+    // Process single contact
+    for (const memberId of memberIds) {
+      console.log(`Processing member ID: ${memberId}`);
       
-      console.log(`Processing contact ${vid}:`, props);
+      // First check if contact is in active list
+      const isActive = await checkActiveList(memberId);
+      console.log(`Member ${memberId} active status:`, isActive);
+      
+      // Get contact details
+      const contact = await fetchHubspotContact(memberId);
+      console.log(`Retrieved contact data for ${memberId}:`, contact);
 
       const profile = {
-        record_id: vid,
-        "First Name": props.firstname?.value || '',
-        "Last Name": props.lastname?.value || '',
-        "Full Name": `${props.firstname?.value || ''} ${props.lastname?.value || ''}`.trim(),
-        "Company Name": props.company?.value || '',
-        "Job Title": props.jobtitle?.value || '',
-        "Phone Number": props.phone?.value || '',
-        "Industry": props.industry?.value || '',
-        "State/Region": props.state?.value || '',
-        "City": props.city?.value || '',
-        "Email": props.email?.value || '',
-        "Bio": props.bio?.value || '',
-        "LinkedIn": props.linkedin?.value || '',
-        "Headshot": props.headshot?.value || '',
+        record_id: memberId,
+        "First Name": contact.properties.firstname || '',
+        "Last Name": contact.properties.lastname || '',
+        "Full Name": `${contact.properties.firstname || ''} ${contact.properties.lastname || ''}`.trim(),
+        "Company Name": contact.properties.company || '',
+        "Job Title": contact.properties.jobtitle || '',
+        "Phone Number": contact.properties.phone || '',
+        "Industry": contact.properties.industry || '',
+        "State/Region": contact.properties.state || '',
+        "City": contact.properties.city || '',
+        "Email": contact.properties.email || '',
+        "Bio": contact.properties.bio || '',
+        "LinkedIn": contact.properties.linkedin || '',
+        "Headshot": contact.properties.headshot || '',
         "Email Domain": null,
-        "Membership": props.membership?.value || '',
-        "active": true  // Always true since contact is from active list
+        "Membership": contact.properties.membership || '',
+        "active": isActive
       };
 
-      console.log(`Upserting profile for ${vid}:`, profile);
+      console.log(`Upserting profile for ${memberId}:`, profile);
 
       const { error } = await supabase
         .from('profiles')
@@ -125,18 +138,18 @@ serve(async (req) => {
         });
 
       if (error) {
-        console.error(`Error upserting profile ${vid}:`, error);
+        console.error(`Error upserting profile ${memberId}:`, error);
         throw error;
       }
 
-      console.log(`Successfully processed contact ${vid}`);
+      console.log(`Successfully processed contact ${memberId}`);
     }
 
     return new Response(
       JSON.stringify({
         success: true,
         summary: {
-          processed: hubspotContacts.length
+          processed: memberIds.length
         }
       }),
       {
