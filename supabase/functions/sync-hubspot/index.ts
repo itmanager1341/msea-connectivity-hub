@@ -296,8 +296,12 @@ serve(async (req) => {
 
         // Process each contact from HubSpot
         for (const contact of allContacts) {
+          console.log('Processing contact:', contact);
           const vid = parseInt(contact.vid || contact.vid)
           const props = contact.properties
+
+          // Log the headshot value for debugging
+          console.log('Headshot value from HubSpot:', props.headshot?.value);
 
           const profile: Profile = {
             record_id: vid,
@@ -322,12 +326,23 @@ serve(async (req) => {
             active: true // Always set to true since we're only getting active members
           }
 
+          console.log('Processed profile:', profile);
+
+          // Check if this is an update or insert
           if (existingProfilesMap.has(vid)) {
-            updates.push(profile)
-            updatedCount++
+            const existingProfile = existingProfilesMap.get(vid);
+            // Only update if there are actual changes
+            if (JSON.stringify(existingProfile) !== JSON.stringify(profile)) {
+              updates.push(profile);
+              updatedCount++;
+              console.log(`Profile ${vid} has changes, will be updated`);
+            } else {
+              console.log(`No changes detected for profile ${vid}`);
+            }
           } else {
-            inserts.push(profile)
-            insertedCount++
+            inserts.push(profile);
+            insertedCount++;
+            console.log(`New profile ${vid} will be inserted`);
           }
         }
 
