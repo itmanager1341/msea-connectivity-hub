@@ -24,6 +24,36 @@ export type Database = {
         }
         Relationships: []
       }
+      hubspot_settings: {
+        Row: {
+          active_list_id: string
+          created_at: string
+          created_by: string | null
+          field_mappings: Json | null
+          id: string
+          last_sync_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          active_list_id: string
+          created_at?: string
+          created_by?: string | null
+          field_mappings?: Json | null
+          id?: string
+          last_sync_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active_list_id?: string
+          created_at?: string
+          created_by?: string | null
+          field_mappings?: Json | null
+          id?: string
+          last_sync_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       newsletters: {
         Row: {
           content: string

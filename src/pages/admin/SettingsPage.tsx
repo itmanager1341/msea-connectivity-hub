@@ -1,7 +1,8 @@
+
 import React from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { AlertCircle } from "lucide-react";
+import { HubSpotSettings } from "@/components/admin/settings/HubSpotSettings";
 
 const SettingsPage = () => {
   return (
@@ -104,13 +105,17 @@ const SettingsPage = () => {
               <CardDescription>Manage external service integrations and synchronization</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-6">
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg">HubSpot Integration</CardTitle>
+                    <CardDescription>Configure HubSpot list synchronization settings</CardDescription>
                   </CardHeader>
-                  <CardContent>HubSpot sync settings coming soon</CardContent>
+                  <CardContent>
+                    <HubSpotSettings />
+                  </CardContent>
                 </Card>
+                
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg">Sync Status</CardTitle>
