@@ -28,7 +28,7 @@ serve(async (req) => {
     console.log(`Testing HubSpot list connection for list ID: ${listId}`);
 
     // Verify the list exists by getting its details directly
-    const listResponse = await fetch(
+    const response = await fetch(
       `https://api.hubapi.com/crm/v3/lists/${listId}`,
       {
         headers: {
@@ -38,11 +38,23 @@ serve(async (req) => {
       }
     );
 
-    if (!listResponse.ok) {
-      throw new Error(`Invalid list ID: ${await listResponse.text()}`);
+    // Log the full response for debugging
+    console.log('Response status:', response.status);
+    const responseText = await response.text();
+    console.log('Response body:', responseText);
+
+    if (!response.ok) {
+      throw new Error(`Invalid list ID: ${responseText}`);
     }
 
-    const listData = await listResponse.json();
+    let listData;
+    try {
+      listData = JSON.parse(responseText);
+    } catch (e) {
+      console.error('Failed to parse response as JSON:', e);
+      throw new Error('Invalid response from HubSpot API');
+    }
+
     console.log('List details:', listData);
 
     // Extract the filters to understand what properties are being used
