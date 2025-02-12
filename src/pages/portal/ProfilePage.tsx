@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { User, Lock, Edit2, Check } from "lucide-react";
@@ -26,16 +27,19 @@ const ProfilePage = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<Profile | null>(null);
 
-  // Fetch Jonathan Hughes' profile directly
+  // Fetch currently authenticated user's profile
   const { data: profile, isLoading: isProfileLoading, refetch: refetchProfile } = useQuery({
     queryKey: ["profile"],
     queryFn: async () => {
+      // Get current user's email
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.email) throw new Error("No authenticated user found");
+
       const { data: profile, error } = await supabase
         .from("profiles")
         .select("*")
-        .eq("First Name", "Jonathan")
-        .eq("Last Name", "Hughes")
-        .single();
+        .eq("Email", user.email)
+        .maybeSingle();
 
       if (error) throw error;
       if (!profile) throw new Error("Profile not found");
