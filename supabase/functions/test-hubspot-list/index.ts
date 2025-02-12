@@ -27,9 +27,9 @@ serve(async (req) => {
 
     console.log(`Testing HubSpot list connection for list ID: ${listId}`);
 
-    // First, verify the list exists by checking its memberships
+    // Verify the list exists by getting its details directly
     const listResponse = await fetch(
-      `https://api.hubapi.com/crm/v3/lists/${listId}/memberships`,
+      `https://api.hubapi.com/crm/v3/lists/${listId}`,
       {
         headers: {
           'Authorization': `Bearer ${HUBSPOT_API_KEY}`,
@@ -42,25 +42,14 @@ serve(async (req) => {
       throw new Error(`Invalid list ID: ${await listResponse.text()}`);
     }
 
-    // Then, get all contact properties using HubSpot v3 API
-    const propertiesResponse = await fetch(
-      'https://api.hubapi.com/crm/v3/properties/contacts',
-      {
-        headers: {
-          'Authorization': `Bearer ${HUBSPOT_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    const listData = await listResponse.json();
+    console.log('List details:', listData);
 
-    if (!propertiesResponse.ok) {
-      throw new Error(`Failed to fetch HubSpot properties: ${await propertiesResponse.text()}`);
-    }
+    // Extract the filters to understand what properties are being used
+    const filters = listData.filters;
+    console.log('List filters:', filters);
 
-    const propertiesData = await propertiesResponse.json();
-    const properties = propertiesData.results;
-    
-    // Map HubSpot properties to our Supabase columns
+    // Map the properties used in the list to our Supabase columns
     const fieldMappings: Record<string, string> = {};
     const supabaseColumns = [
       "First Name",
@@ -79,24 +68,30 @@ serve(async (req) => {
       "Membership"
     ];
 
-    // Create mappings between HubSpot properties and our database columns
-    properties.forEach((prop: { name: string, label: string }) => {
-      const matchingColumn = supabaseColumns.find(col => 
-        col.toLowerCase().replace(/[^a-z0-9]/g, '') === 
-        prop.label.toLowerCase().replace(/[^a-z0-9]/g, '')
-      );
-      if (matchingColumn) {
-        fieldMappings[matchingColumn] = prop.name;
-      }
-    });
+    // We can get the properties directly from the list's configuration
+    // This ensures we're only mapping fields that are actually used in the list
+    if (filters && Array.isArray(filters)) {
+      filters.forEach(filter => {
+        if (filter.propertyName) {
+          const matchingColumn = supabaseColumns.find(col => 
+            col.toLowerCase().replace(/[^a-z0-9]/g, '') === 
+            filter.propertyName.toLowerCase().replace(/[^a-z0-9]/g, '')
+          );
+          if (matchingColumn) {
+            fieldMappings[matchingColumn] = filter.propertyName;
+          }
+        }
+      });
+    }
 
-    console.log('Successfully mapped HubSpot properties to database columns:', fieldMappings);
+    console.log('Successfully mapped list properties to database columns:', fieldMappings);
 
     return new Response(
       JSON.stringify({
         success: true,
         listId: parseInt(listId),
         properties: fieldMappings,
+        listName: listData.name,
         message: "Successfully connected to HubSpot list and mapped fields"
       }),
       {
