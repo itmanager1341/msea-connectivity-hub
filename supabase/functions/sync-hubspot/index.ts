@@ -50,9 +50,30 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
+    // First, let's verify we can access the list itself
+    const listCheckUrl = `https://api.hubapi.com/contacts/v1/lists/3190`;
+    console.log('Verifying list access:', listCheckUrl);
+    
+    const listResponse = await fetch(listCheckUrl, {
+      headers: {
+        'Authorization': `Bearer ${HUBSPOT_API_KEY}`,
+        'Content-Type': 'application/json',
+      }
+    });
+
+    if (!listResponse.ok) {
+      console.error('List access check failed:', await listResponse.text());
+      throw new Error(`Unable to access HubSpot list: ${listResponse.statusText}`);
+    }
+
+    const listData = await listResponse.json();
+    console.log('List details:', listData);
+
     // Function to check if contact is in active list
     const checkActiveList = async (contactId: number): Promise<boolean> => {
-      const url = `https://api.hubapi.com/contactslistseg/v1/lists/3190/has-contacts?vids=${contactId}`;
+      const url = `https://api.hubapi.com/contacts/v1/lists/3190/has-contact/${contactId}`;
+      console.log('Checking active list URL:', url);
+      
       const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${HUBSPOT_API_KEY}`,
@@ -66,20 +87,13 @@ serve(async (req) => {
 
       const data = await response.json();
       console.log(`Active list check for ${contactId}:`, data);
-      return data?.hasContacts || false;
+      return data?.hasContact || false;
     }
 
-    // Function to fetch a single contact from HubSpot
+    // Function to fetch a single contact
     const fetchHubspotContact = async (contactId: number) => {
-      const properties = [
-        'firstname', 'lastname', 'email', 'company', 
-        'phone', 'jobtitle', 'industry', 'state', 
-        'city', 'bio', 'linkedin', 'headshot',
-        'membership'
-      ];
-
-      const url = `https://api.hubapi.com/crm/v3/objects/contacts/${contactId}?properties=${properties.join(',')}`;
-      console.log('Fetching contact from HubSpot URL:', url);
+      const url = `https://api.hubapi.com/contacts/v1/contact/vid/${contactId}/profile`;
+      console.log('Fetching contact URL:', url);
       
       const response = await fetch(url, {
         headers: {
@@ -97,7 +111,7 @@ serve(async (req) => {
       return data;
     }
 
-    // Process single contact
+    // Process contacts
     for (const memberId of memberIds) {
       console.log(`Processing member ID: ${memberId}`);
       
@@ -111,21 +125,21 @@ serve(async (req) => {
 
       const profile = {
         record_id: memberId,
-        "First Name": contact.properties.firstname || '',
-        "Last Name": contact.properties.lastname || '',
-        "Full Name": `${contact.properties.firstname || ''} ${contact.properties.lastname || ''}`.trim(),
-        "Company Name": contact.properties.company || '',
-        "Job Title": contact.properties.jobtitle || '',
-        "Phone Number": contact.properties.phone || '',
-        "Industry": contact.properties.industry || '',
-        "State/Region": contact.properties.state || '',
-        "City": contact.properties.city || '',
-        "Email": contact.properties.email || '',
-        "Bio": contact.properties.bio || '',
-        "LinkedIn": contact.properties.linkedin || '',
-        "Headshot": contact.properties.headshot || '',
+        "First Name": contact.properties.firstname?.value || '',
+        "Last Name": contact.properties.lastname?.value || '',
+        "Full Name": `${contact.properties.firstname?.value || ''} ${contact.properties.lastname?.value || ''}`.trim(),
+        "Company Name": contact.properties.company?.value || '',
+        "Job Title": contact.properties.jobtitle?.value || '',
+        "Phone Number": contact.properties.phone?.value || '',
+        "Industry": contact.properties.industry?.value || '',
+        "State/Region": contact.properties.state?.value || '',
+        "City": contact.properties.city?.value || '',
+        "Email": contact.properties.email?.value || '',
+        "Bio": contact.properties.bio?.value || '',
+        "LinkedIn": contact.properties.linkedin?.value || '',
+        "Headshot": contact.properties.headshot?.value || '',
         "Email Domain": null,
-        "Membership": contact.properties.membership || '',
+        "Membership": contact.properties.membership?.value || '',
         "active": isActive
       };
 
