@@ -47,7 +47,6 @@ export const HubSpotSettings = () => {
   // Update settings mutation
   const updateSettings = useMutation({
     mutationFn: async (data: HubspotSettingsFormData) => {
-      // Get the current user's ID directly from auth, no need to query profiles
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("No authenticated user found");
 

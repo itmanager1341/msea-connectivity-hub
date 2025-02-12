@@ -27,7 +27,22 @@ serve(async (req) => {
 
     console.log(`Testing HubSpot list connection for list ID: ${listId}`);
 
-    // First, get all contact properties using HubSpot v3 API
+    // First, verify the list exists by checking its memberships
+    const listResponse = await fetch(
+      `https://api.hubapi.com/crm/v3/lists/${listId}/memberships`,
+      {
+        headers: {
+          'Authorization': `Bearer ${HUBSPOT_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    if (!listResponse.ok) {
+      throw new Error(`Invalid list ID: ${await listResponse.text()}`);
+    }
+
+    // Then, get all contact properties using HubSpot v3 API
     const propertiesResponse = await fetch(
       'https://api.hubapi.com/crm/v3/properties/contacts',
       {
@@ -45,21 +60,6 @@ serve(async (req) => {
     const propertiesData = await propertiesResponse.json();
     const properties = propertiesData.results;
     
-    // Then verify the list exists by checking its memberships
-    const listResponse = await fetch(
-      `https://api.hubapi.com/crm/v3/lists/${listId}/memberships`,
-      {
-        headers: {
-          'Authorization': `Bearer ${HUBSPOT_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
-    if (!listResponse.ok) {
-      throw new Error(`Invalid list ID: ${await listResponse.text()}`);
-    }
-
     // Map HubSpot properties to our Supabase columns
     const fieldMappings: Record<string, string> = {};
     const supabaseColumns = [
