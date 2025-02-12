@@ -40,6 +40,35 @@ interface Profile {
   'active': boolean;
 }
 
+interface HubSpotContact {
+  id: string;
+  properties: {
+    firstname?: string;
+    lastname?: string;
+    email?: string;
+    company?: string;
+    jobtitle?: string;
+    phone?: string;
+    industry?: string;
+    state?: string;
+    city?: string;
+    bio?: string;
+    linkedin?: string;
+    headshot?: string;
+    membership?: string;
+  };
+}
+
+interface HubSpotListResponse {
+  total: number;
+  results: HubSpotContact[];
+  paging?: {
+    next?: {
+      after: string;
+    };
+  };
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -68,7 +97,37 @@ serve(async (req) => {
       deactivated: 0
     };
 
-    // Process contacts
+    // Fetch the entire HubSpot list data once
+    console.log('Fetching HubSpot list data...');
+    const url = `https://api.hubapi.com/crm/v3/lists/4959/contacts?properties=firstname,lastname,email,company,jobtitle,phone,industry,state,city,bio,linkedin,headshot,membership&idProperty=hs_object_id&limit=100`;
+    let allHubSpotContacts: HubSpotContact[] = [];
+    let hasMore = true;
+    let after: string | undefined = undefined;
+
+    while (hasMore) {
+      const paginatedUrl = after ? `${url}&after=${after}` : url;
+      const response = await fetch(paginatedUrl, {
+        headers: {
+          'Authorization': `Bearer ${HUBSPOT_API_KEY}`,
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HubSpot API error fetching list data: ${await response.text()}`);
+      }
+
+      const listData: HubSpotListResponse = await response.json();
+      allHubSpotContacts = [...allHubSpotContacts, ...listData.results];
+      hasMore = !!listData.paging?.next?.after;
+      after = listData.paging?.next?.after;
+      
+      console.log(`Fetched ${listData.results.length} contacts. Total so far: ${allHubSpotContacts.length}`);
+    }
+
+    console.log(`Total HubSpot contacts fetched: ${allHubSpotContacts.length}`);
+
+    // Process contacts using the fetched list data
     for (const memberId of memberIds) {
       console.log(`Processing member ID: ${memberId}`);
       
@@ -84,23 +143,8 @@ serve(async (req) => {
         throw fetchError;
       }
 
-      // Check if contact is in active list and get their properties
-      const url = `https://api.hubapi.com/crm/v3/lists/4959/contacts?properties=firstname,lastname,email,company,jobtitle,phone,industry,state,city,bio,linkedin,headshot,membership&idProperty=hs_object_id`;
-      console.log('Fetching member data URL:', url);
-      
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${HUBSPOT_API_KEY}`,
-          'Content-Type': 'application/json',
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`HubSpot API error fetching list data: ${await response.text()}`);
-      }
-
-      const listData = await response.json();
-      const memberData = listData.results.find(contact => contact.id === memberId);
+      // Check if contact exists in the fetched HubSpot data
+      const memberData = allHubSpotContacts.find(contact => contact.id === memberId);
       const isActive = !!memberData;
       
       if (isActive) {
