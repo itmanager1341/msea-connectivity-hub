@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -85,8 +84,8 @@ serve(async (req) => {
         throw fetchError;
       }
 
-      // Check if contact is in active list and get their properties in one call
-      const url = `https://api.hubapi.com/crm/v3/lists/4959/memberships/${memberId}?properties=firstname,lastname,email,company,jobtitle,phone,industry,state,city,bio,linkedin,headshot,membership`;
+      // Check if contact is in active list and get their properties
+      const url = `https://api.hubapi.com/crm/v3/lists/4959/contacts?properties=firstname,lastname,email,company,jobtitle,phone,industry,state,city,bio,linkedin,headshot,membership&idProperty=hs_object_id`;
       console.log('Fetching member data URL:', url);
       
       const response = await fetch(url, {
@@ -96,33 +95,32 @@ serve(async (req) => {
         }
       });
 
-      // If 404, the contact is not in the list (inactive)
-      const isActive = response.status !== 404;
+      if (!response.ok) {
+        throw new Error(`HubSpot API error fetching list data: ${await response.text()}`);
+      }
+
+      const listData = await response.json();
+      const memberData = listData.results.find(contact => contact.id === memberId);
+      const isActive = !!memberData;
       
       if (isActive) {
-        if (!response.ok) {
-          throw new Error(`HubSpot API error fetching member data: ${await response.text()}`);
-        }
-        const membershipData = await response.json() as HubSpotMembership;
-        console.log(`Retrieved member data for ${memberId}:`, membershipData);
-
         const profile = {
           record_id: memberId,
-          "First Name": membershipData.properties.firstname || existingProfile?.["First Name"] || '',
-          "Last Name": membershipData.properties.lastname || existingProfile?.["Last Name"] || '',
-          "Full Name": `${membershipData.properties.firstname || ''} ${membershipData.properties.lastname || ''}`.trim() || existingProfile?.["Full Name"] || '',
-          "Company Name": membershipData.properties.company || existingProfile?.["Company Name"] || '',
-          "Job Title": membershipData.properties.jobtitle || existingProfile?.["Job Title"] || '',
-          "Phone Number": membershipData.properties.phone || existingProfile?.["Phone Number"] || '',
-          "Industry": membershipData.properties.industry || existingProfile?.["Industry"] || '',
-          "State/Region": membershipData.properties.state || existingProfile?.["State/Region"] || '',
-          "City": membershipData.properties.city || existingProfile?.["City"] || '',
-          "Email": membershipData.properties.email || existingProfile?.["Email"] || '',
-          "Bio": membershipData.properties.bio || existingProfile?.["Bio"] || '',
-          "LinkedIn": membershipData.properties.linkedin || existingProfile?.["LinkedIn"] || '',
-          "Headshot": membershipData.properties.headshot || existingProfile?.["Headshot"] || '',
+          "First Name": memberData.properties.firstname || existingProfile?.["First Name"] || '',
+          "Last Name": memberData.properties.lastname || existingProfile?.["Last Name"] || '',
+          "Full Name": `${memberData.properties.firstname || ''} ${memberData.properties.lastname || ''}`.trim() || existingProfile?.["Full Name"] || '',
+          "Company Name": memberData.properties.company || existingProfile?.["Company Name"] || '',
+          "Job Title": memberData.properties.jobtitle || existingProfile?.["Job Title"] || '',
+          "Phone Number": memberData.properties.phone || existingProfile?.["Phone Number"] || '',
+          "Industry": memberData.properties.industry || existingProfile?.["Industry"] || '',
+          "State/Region": memberData.properties.state || existingProfile?.["State/Region"] || '',
+          "City": memberData.properties.city || existingProfile?.["City"] || '',
+          "Email": memberData.properties.email || existingProfile?.["Email"] || '',
+          "Bio": memberData.properties.bio || existingProfile?.["Bio"] || '',
+          "LinkedIn": memberData.properties.linkedin || existingProfile?.["LinkedIn"] || '',
+          "Headshot": memberData.properties.headshot || existingProfile?.["Headshot"] || '',
           "Email Domain": existingProfile?.["Email Domain"] || null,
-          "Membership": membershipData.properties.membership || existingProfile?.["Membership"] || '',
+          "Membership": memberData.properties.membership || existingProfile?.["Membership"] || '',
           "active": true
         };
 
