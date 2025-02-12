@@ -18,6 +18,8 @@ serve(async (req) => {
       throw new Error('HUBSPOT_API_KEY is not set');
     }
 
+    console.log('Using HubSpot API Key (first 5 chars):', HUBSPOT_API_KEY.substring(0, 5));
+
     const url = new URL(req.url);
     const listId = url.searchParams.get('listId');
 
@@ -27,8 +29,26 @@ serve(async (req) => {
 
     console.log(`Testing HubSpot list connection for list ID: ${listId}`);
 
-    // Using the v3 Lists API endpoint
-    const response = await fetch(
+    // First, let's verify the API key works by testing the auth
+    const authTestResponse = await fetch(
+      'https://api.hubapi.com/crm/v3/objects/contacts',
+      {
+        headers: {
+          'Authorization': `Bearer ${HUBSPOT_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    console.log('Auth test response status:', authTestResponse.status);
+    if (!authTestResponse.ok) {
+      const authErrorText = await authTestResponse.text();
+      console.error('Auth test failed:', authErrorText);
+      throw new Error('HubSpot authentication failed. Please verify your API key.');
+    }
+
+    // Now test the actual list endpoint
+    const listResponse = await fetch(
       `https://api.hubapi.com/crm/v3/lists/${listId}`,
       {
         headers: {
@@ -38,13 +58,17 @@ serve(async (req) => {
       }
     );
 
-    // Log the full response for debugging
-    console.log('Response status:', response.status);
-    const responseText = await response.text();
-    console.log('Response body:', responseText);
+    console.log('List response status:', listResponse.status);
+    console.log('List response headers:', Object.fromEntries(listResponse.headers.entries()));
+    
+    const responseText = await listResponse.text();
+    console.log('Raw response body:', responseText);
 
-    if (!response.ok) {
-      throw new Error(`Invalid list ID: ${responseText}`);
+    if (!listResponse.ok) {
+      if (listResponse.status === 404) {
+        throw new Error(`List ID ${listId} not found in HubSpot`);
+      }
+      throw new Error(`HubSpot API error: ${responseText}`);
     }
 
     let listData;
@@ -52,7 +76,7 @@ serve(async (req) => {
       listData = JSON.parse(responseText);
     } catch (e) {
       console.error('Failed to parse response as JSON:', e);
-      throw new Error('Invalid response from HubSpot API');
+      throw new Error(`Invalid JSON response from HubSpot API: ${responseText.substring(0, 100)}...`);
     }
 
     console.log('List details:', listData);
@@ -80,8 +104,6 @@ serve(async (req) => {
       "Membership"
     ];
 
-    // We can get the properties directly from the list's configuration
-    // This ensures we're only mapping fields that are actually used in the list
     if (filters && Array.isArray(filters)) {
       filters.forEach(filter => {
         if (filter.propertyName) {
