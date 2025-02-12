@@ -27,9 +27,9 @@ serve(async (req) => {
 
     console.log(`Testing HubSpot list connection for list ID: ${listId}`);
 
-    // Using the Marketing Lists API endpoint
+    // Using the v3 Lists API endpoint
     const response = await fetch(
-      `https://api.hubapi.com/contacts/v1/lists/${listId}`,
+      `https://api.hubapi.com/crm/v3/lists/${listId}`,
       {
         headers: {
           'Authorization': `Bearer ${HUBSPOT_API_KEY}`,
@@ -57,9 +57,9 @@ serve(async (req) => {
 
     console.log('List details:', listData);
 
-    // Extract the metadata to understand what properties are being used
-    const listMetadata = listData.metadata;
-    console.log('List metadata:', listMetadata);
+    // Extract the filters to understand what properties are being used
+    const filters = listData.filters;
+    console.log('List filters:', filters);
 
     // Map the properties used in the list to our Supabase columns
     const fieldMappings: Record<string, string> = {};
@@ -80,16 +80,17 @@ serve(async (req) => {
       "Membership"
     ];
 
-    // We'll map the fields based on the list's filters if available
-    if (listMetadata && listMetadata.filters) {
-      listMetadata.filters.forEach((filter: any) => {
-        if (filter.property) {
+    // We can get the properties directly from the list's configuration
+    // This ensures we're only mapping fields that are actually used in the list
+    if (filters && Array.isArray(filters)) {
+      filters.forEach(filter => {
+        if (filter.propertyName) {
           const matchingColumn = supabaseColumns.find(col => 
             col.toLowerCase().replace(/[^a-z0-9]/g, '') === 
-            filter.property.toLowerCase().replace(/[^a-z0-9]/g, '')
+            filter.propertyName.toLowerCase().replace(/[^a-z0-9]/g, '')
           );
           if (matchingColumn) {
-            fieldMappings[matchingColumn] = filter.property;
+            fieldMappings[matchingColumn] = filter.propertyName;
           }
         }
       });
