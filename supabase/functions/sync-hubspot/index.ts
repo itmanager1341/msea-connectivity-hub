@@ -144,12 +144,15 @@ serve(async (req) => {
       }
 
       // Check if contact exists in the fetched HubSpot data
-      const memberData = allHubSpotContacts.find(contact => contact.id === memberId);
+      // Convert memberId to string for comparison since HubSpot IDs are strings
+      const memberData = allHubSpotContacts.find(
+        contact => String(contact.id) === String(memberId)
+      );
       const isActive = !!memberData;
       
       if (isActive) {
         const profile = {
-          record_id: memberId,
+          record_id: parseInt(memberData.id), // Ensure numeric ID for Supabase
           "First Name": memberData.properties.firstname || existingProfile?.["First Name"] || '',
           "Last Name": memberData.properties.lastname || existingProfile?.["Last Name"] || '',
           "Full Name": `${memberData.properties.firstname || ''} ${memberData.properties.lastname || ''}`.trim() || existingProfile?.["Full Name"] || '',
@@ -169,6 +172,11 @@ serve(async (req) => {
         };
 
         console.log(`Upserting profile for ${memberId}:`, profile);
+
+        // Validate that we have a valid numeric ID before upserting
+        if (isNaN(profile.record_id)) {
+          throw new Error(`Invalid record_id for member ${memberId}: HubSpot ID could not be converted to number`);
+        }
 
         const { error } = await supabase
           .from('profiles')
