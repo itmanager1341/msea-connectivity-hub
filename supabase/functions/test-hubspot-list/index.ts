@@ -27,9 +27,9 @@ serve(async (req) => {
 
     console.log(`Testing HubSpot list connection for list ID: ${listId}`);
 
-    // First, get the list properties using HubSpot v3 API
+    // First, get all contact properties using HubSpot v3 API
     const propertiesResponse = await fetch(
-      'https://api.hubapi.com/properties/v2/contacts/properties',
+      'https://api.hubapi.com/crm/v3/properties/contacts',
       {
         headers: {
           'Authorization': `Bearer ${HUBSPOT_API_KEY}`,
@@ -42,7 +42,8 @@ serve(async (req) => {
       throw new Error(`Failed to fetch HubSpot properties: ${await propertiesResponse.text()}`);
     }
 
-    const properties = await propertiesResponse.json();
+    const propertiesData = await propertiesResponse.json();
+    const properties = propertiesData.results;
     
     // Then verify the list exists
     const listResponse = await fetch(
