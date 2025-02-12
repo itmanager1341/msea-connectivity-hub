@@ -51,7 +51,7 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     // First, let's verify we can access the list itself
-    const listCheckUrl = `https://api.hubapi.com/contacts/v1/lists/3190`;
+    const listCheckUrl = `https://api.hubapi.com/contacts/v1/lists/static/3190`;
     console.log('Verifying list access:', listCheckUrl);
     
     const listResponse = await fetch(listCheckUrl, {
@@ -71,7 +71,7 @@ serve(async (req) => {
 
     // Function to check if contact is in active list
     const checkActiveList = async (contactId: number): Promise<boolean> => {
-      const url = `https://api.hubapi.com/contacts/v1/lists/3190/has-contact/${contactId}`;
+      const url = `https://api.hubapi.com/contacts/v1/lists/static/3190/contacts/vid/${contactId}`;
       console.log('Checking active list URL:', url);
       
       const response = await fetch(url, {
@@ -81,13 +81,19 @@ serve(async (req) => {
         }
       });
 
+      // A 404 means the contact is not in the list
+      if (response.status === 404) {
+        console.log(`Contact ${contactId} not found in list`);
+        return false;
+      }
+
       if (!response.ok) {
         throw new Error(`HubSpot API error checking active list: ${await response.text()}`);
       }
 
       const data = await response.json();
       console.log(`Active list check for ${contactId}:`, data);
-      return data?.hasContact || false;
+      return true;  // If we get here, the contact is in the list
     }
 
     // Function to fetch a single contact
