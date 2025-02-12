@@ -8,7 +8,6 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -19,7 +18,6 @@ serve(async (req) => {
       throw new Error('HUBSPOT_API_KEY is not set');
     }
 
-    // Get listId from query params
     const url = new URL(req.url);
     const listId = url.searchParams.get('listId');
 
@@ -27,14 +25,26 @@ serve(async (req) => {
       throw new Error('List ID is required');
     }
 
-    // Validate that listId is a number
-    if (!/^\d+$/.test(listId)) {
-      throw new Error('List ID must be a number');
+    console.log(`Testing HubSpot list connection for list ID: ${listId}`);
+
+    // First, get the list properties using HubSpot v3 API
+    const propertiesResponse = await fetch(
+      'https://api.hubapi.com/properties/v2/contacts/properties',
+      {
+        headers: {
+          'Authorization': `Bearer ${HUBSPOT_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    if (!propertiesResponse.ok) {
+      throw new Error(`Failed to fetch HubSpot properties: ${await propertiesResponse.text()}`);
     }
 
-    console.log(`Testing connection for HubSpot list ID: ${listId}`);
-
-    // First, verify the list exists and get its properties
+    const properties = await propertiesResponse.json();
+    
+    // Then verify the list exists
     const listResponse = await fetch(
       `https://api.hubapi.com/crm/v3/lists/${listId}`,
       {
@@ -46,34 +56,47 @@ serve(async (req) => {
     );
 
     if (!listResponse.ok) {
-      throw new Error(`Failed to fetch list: ${await listResponse.text()}`);
+      throw new Error(`Invalid list ID: ${await listResponse.text()}`);
     }
 
-    // Define our standard field mappings
-    const mappings = {
-      "First Name": "First Name",
-      "Last Name": "Last Name",
-      "Full Name": "Full Name",
-      "Email": "Email",
-      "Company Name": "Company Name",
-      "Job Title": "Job Title",
-      "Phone Number": "Phone Number",
-      "Industry": "Industry",
-      "State/Region": "State/Region",
-      "City": "City",
-      "Bio": "Bio",
-      "LinkedIn": "LinkedIn",
-      "Headshot": "Headshot",
-      "Membership": "Membership"
-    };
+    // Map HubSpot properties to our Supabase columns
+    const fieldMappings: Record<string, string> = {};
+    const supabaseColumns = [
+      "First Name",
+      "Last Name",
+      "Full Name",
+      "Email",
+      "Company Name",
+      "Job Title",
+      "Phone Number",
+      "Industry",
+      "State/Region",
+      "City",
+      "Bio",
+      "LinkedIn",
+      "Headshot",
+      "Membership"
+    ];
 
-    // Return the mappings and success status
+    // Create mappings between HubSpot properties and our database columns
+    properties.forEach((prop: { name: string, label: string }) => {
+      const matchingColumn = supabaseColumns.find(col => 
+        col.toLowerCase().replace(/[^a-z0-9]/g, '') === 
+        prop.label.toLowerCase().replace(/[^a-z0-9]/g, '')
+      );
+      if (matchingColumn) {
+        fieldMappings[matchingColumn] = prop.name;
+      }
+    });
+
+    console.log('Successfully mapped HubSpot properties to database columns:', fieldMappings);
+
     return new Response(
       JSON.stringify({
         success: true,
         listId: parseInt(listId),
-        properties: mappings,
-        message: "Successfully connected to HubSpot list"
+        properties: fieldMappings,
+        message: "Successfully connected to HubSpot list and mapped fields"
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
