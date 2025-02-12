@@ -37,7 +37,7 @@ export const HubSpotSettings = () => {
       const { data, error } = await supabase
         .from("hubspot_settings")
         .select("*")
-        .maybeSingle(); // Changed from single() to maybeSingle()
+        .maybeSingle();
 
       if (error) throw error;
       return data;
@@ -47,12 +47,16 @@ export const HubSpotSettings = () => {
   // Update settings mutation
   const updateSettings = useMutation({
     mutationFn: async (data: HubspotSettingsFormData) => {
+      // Get the current user's ID directly from auth, no need to query profiles
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("No authenticated user found");
+
       const { error } = await supabase
         .from("hubspot_settings")
         .upsert({
           active_list_id: data.active_list_id,
           field_mappings: fieldMappings,
-          created_by: (await supabase.auth.getUser()).data.user?.id, // Add created_by when creating new settings
+          created_by: user.id,
         });
 
       if (error) throw error;
