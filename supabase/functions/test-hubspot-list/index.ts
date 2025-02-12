@@ -45,9 +45,9 @@ serve(async (req) => {
     const propertiesData = await propertiesResponse.json();
     const properties = propertiesData.results;
     
-    // Then verify the list exists
+    // Then verify the list exists by checking its memberships
     const listResponse = await fetch(
-      `https://api.hubapi.com/crm/v3/lists/${listId}`,
+      `https://api.hubapi.com/crm/v3/lists/${listId}/memberships`,
       {
         headers: {
           'Authorization': `Bearer ${HUBSPOT_API_KEY}`,
