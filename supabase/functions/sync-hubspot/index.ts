@@ -3,7 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 interface HubSpotContact {
-  vid: number;
+  id: string;
   properties: Record<string, any>;
 }
 
@@ -50,102 +50,52 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // First, let's verify we can access the list itself
-    const listCheckUrl = `https://api.hubapi.com/contacts/v1/lists/static/3190`;
-    console.log('Verifying list access:', listCheckUrl);
-    
-    const listResponse = await fetch(listCheckUrl, {
-      headers: {
-        'Authorization': `Bearer ${HUBSPOT_API_KEY}`,
-        'Content-Type': 'application/json',
-      }
-    });
-
-    if (!listResponse.ok) {
-      console.error('List access check failed:', await listResponse.text());
-      throw new Error(`Unable to access HubSpot list: ${listResponse.statusText}`);
-    }
-
-    const listData = await listResponse.json();
-    console.log('List details:', listData);
-
-    // Function to check if contact is in active list
-    const checkActiveList = async (contactId: number): Promise<boolean> => {
-      const url = `https://api.hubapi.com/contacts/v1/lists/static/3190/contacts/vid/${contactId}`;
-      console.log('Checking active list URL:', url);
-      
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${HUBSPOT_API_KEY}`,
-          'Content-Type': 'application/json',
-        }
-      });
-
-      // A 404 means the contact is not in the list
-      if (response.status === 404) {
-        console.log(`Contact ${contactId} not found in list`);
-        return false;
-      }
-
-      if (!response.ok) {
-        throw new Error(`HubSpot API error checking active list: ${await response.text()}`);
-      }
-
-      const data = await response.json();
-      console.log(`Active list check for ${contactId}:`, data);
-      return true;  // If we get here, the contact is in the list
-    }
-
-    // Function to fetch a single contact
-    const fetchHubspotContact = async (contactId: number) => {
-      const url = `https://api.hubapi.com/contacts/v1/contact/vid/${contactId}/profile`;
-      console.log('Fetching contact URL:', url);
-      
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${HUBSPOT_API_KEY}`,
-          'Content-Type': 'application/json',
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`HubSpot API error fetching contact: ${await response.text()}`);
-      }
-
-      const data = await response.json();
-      console.log('HubSpot contact data:', data);
-      return data;
-    }
-
     // Process contacts
     for (const memberId of memberIds) {
       console.log(`Processing member ID: ${memberId}`);
       
-      // First check if contact is in active list
-      const isActive = await checkActiveList(memberId);
-      console.log(`Member ${memberId} active status:`, isActive);
+      // Check if contact is in active list and get their properties in one call
+      const url = `https://api.hubapi.com/crm/v3/lists/4959/memberships/${memberId}?properties=firstname,lastname,email,company,jobtitle,phone,industry,state,city,bio,linkedin,headshot,membership`;
+      console.log('Fetching member data URL:', url);
       
-      // Get contact details
-      const contact = await fetchHubspotContact(memberId);
-      console.log(`Retrieved contact data for ${memberId}:`, contact);
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${HUBSPOT_API_KEY}`,
+          'Content-Type': 'application/json',
+        }
+      });
+
+      // If 404, the contact is not in the list (inactive)
+      const isActive = response.status !== 404;
+      let contactData;
+
+      if (isActive) {
+        if (!response.ok) {
+          throw new Error(`HubSpot API error fetching member data: ${await response.text()}`);
+        }
+        contactData = await response.json();
+        console.log(`Retrieved member data for ${memberId}:`, contactData);
+      } else {
+        console.log(`Member ${memberId} is not in the active list`);
+      }
 
       const profile = {
         record_id: memberId,
-        "First Name": contact.properties.firstname?.value || '',
-        "Last Name": contact.properties.lastname?.value || '',
-        "Full Name": `${contact.properties.firstname?.value || ''} ${contact.properties.lastname?.value || ''}`.trim(),
-        "Company Name": contact.properties.company?.value || '',
-        "Job Title": contact.properties.jobtitle?.value || '',
-        "Phone Number": contact.properties.phone?.value || '',
-        "Industry": contact.properties.industry?.value || '',
-        "State/Region": contact.properties.state?.value || '',
-        "City": contact.properties.city?.value || '',
-        "Email": contact.properties.email?.value || '',
-        "Bio": contact.properties.bio?.value || '',
-        "LinkedIn": contact.properties.linkedin?.value || '',
-        "Headshot": contact.properties.headshot?.value || '',
+        "First Name": contactData?.properties?.firstname || '',
+        "Last Name": contactData?.properties?.lastname || '',
+        "Full Name": `${contactData?.properties?.firstname || ''} ${contactData?.properties?.lastname || ''}`.trim(),
+        "Company Name": contactData?.properties?.company || '',
+        "Job Title": contactData?.properties?.jobtitle || '',
+        "Phone Number": contactData?.properties?.phone || '',
+        "Industry": contactData?.properties?.industry || '',
+        "State/Region": contactData?.properties?.state || '',
+        "City": contactData?.properties?.city || '',
+        "Email": contactData?.properties?.email || '',
+        "Bio": contactData?.properties?.bio || '',
+        "LinkedIn": contactData?.properties?.linkedin || '',
+        "Headshot": contactData?.properties?.headshot || '',
         "Email Domain": null,
-        "Membership": contact.properties.membership?.value || '',
+        "Membership": contactData?.properties?.membership || '',
         "active": isActive
       };
 
