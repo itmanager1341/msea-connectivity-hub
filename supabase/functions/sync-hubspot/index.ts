@@ -2,9 +2,23 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-interface HubSpotContact {
+interface HubSpotMembership {
   id: string;
-  properties: Record<string, any>;
+  properties: {
+    firstname?: string;
+    lastname?: string;
+    email?: string;
+    company?: string;
+    jobtitle?: string;
+    phone?: string;
+    industry?: string;
+    state?: string;
+    city?: string;
+    bio?: string;
+    linkedin?: string;
+    headshot?: string;
+    membership?: string;
+  };
 }
 
 interface Profile {
@@ -50,10 +64,27 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
+    const processedSummary = {
+      updated: 0,
+      deactivated: 0
+    };
+
     // Process contacts
     for (const memberId of memberIds) {
       console.log(`Processing member ID: ${memberId}`);
       
+      // First get the existing profile to ensure we don't lose data if the member is inactive
+      const { data: existingProfile, error: fetchError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('record_id', memberId)
+        .single();
+
+      if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is "not found"
+        console.error(`Error fetching existing profile for ${memberId}:`, fetchError);
+        throw fetchError;
+      }
+
       // Check if contact is in active list and get their properties in one call
       const url = `https://api.hubapi.com/crm/v3/lists/4959/memberships/${memberId}?properties=firstname,lastname,email,company,jobtitle,phone,industry,state,city,bio,linkedin,headshot,membership`;
       console.log('Fetching member data URL:', url);
@@ -67,60 +98,72 @@ serve(async (req) => {
 
       // If 404, the contact is not in the list (inactive)
       const isActive = response.status !== 404;
-      let contactData;
-
+      
       if (isActive) {
         if (!response.ok) {
           throw new Error(`HubSpot API error fetching member data: ${await response.text()}`);
         }
-        contactData = await response.json();
-        console.log(`Retrieved member data for ${memberId}:`, contactData);
+        const membershipData = await response.json() as HubSpotMembership;
+        console.log(`Retrieved member data for ${memberId}:`, membershipData);
+
+        const profile = {
+          record_id: memberId,
+          "First Name": membershipData.properties.firstname || existingProfile?.["First Name"] || '',
+          "Last Name": membershipData.properties.lastname || existingProfile?.["Last Name"] || '',
+          "Full Name": `${membershipData.properties.firstname || ''} ${membershipData.properties.lastname || ''}`.trim() || existingProfile?.["Full Name"] || '',
+          "Company Name": membershipData.properties.company || existingProfile?.["Company Name"] || '',
+          "Job Title": membershipData.properties.jobtitle || existingProfile?.["Job Title"] || '',
+          "Phone Number": membershipData.properties.phone || existingProfile?.["Phone Number"] || '',
+          "Industry": membershipData.properties.industry || existingProfile?.["Industry"] || '',
+          "State/Region": membershipData.properties.state || existingProfile?.["State/Region"] || '',
+          "City": membershipData.properties.city || existingProfile?.["City"] || '',
+          "Email": membershipData.properties.email || existingProfile?.["Email"] || '',
+          "Bio": membershipData.properties.bio || existingProfile?.["Bio"] || '',
+          "LinkedIn": membershipData.properties.linkedin || existingProfile?.["LinkedIn"] || '',
+          "Headshot": membershipData.properties.headshot || existingProfile?.["Headshot"] || '',
+          "Email Domain": existingProfile?.["Email Domain"] || null,
+          "Membership": membershipData.properties.membership || existingProfile?.["Membership"] || '',
+          "active": true
+        };
+
+        console.log(`Upserting profile for ${memberId}:`, profile);
+
+        const { error } = await supabase
+          .from('profiles')
+          .upsert(profile, {
+            onConflict: 'record_id'
+          });
+
+        if (error) {
+          console.error(`Error upserting profile ${memberId}:`, error);
+          throw error;
+        }
+
+        processedSummary.updated++;
+        console.log(`Successfully updated active member ${memberId}`);
       } else {
-        console.log(`Member ${memberId} is not in the active list`);
+        // Member not in list - only update the active status
+        if (existingProfile) {
+          const { error } = await supabase
+            .from('profiles')
+            .update({ active: false })
+            .eq('record_id', memberId);
+
+          if (error) {
+            console.error(`Error updating active status for ${memberId}:`, error);
+            throw error;
+          }
+
+          processedSummary.deactivated++;
+          console.log(`Successfully marked member ${memberId} as inactive`);
+        }
       }
-
-      const profile = {
-        record_id: memberId,
-        "First Name": contactData?.properties?.firstname || '',
-        "Last Name": contactData?.properties?.lastname || '',
-        "Full Name": `${contactData?.properties?.firstname || ''} ${contactData?.properties?.lastname || ''}`.trim(),
-        "Company Name": contactData?.properties?.company || '',
-        "Job Title": contactData?.properties?.jobtitle || '',
-        "Phone Number": contactData?.properties?.phone || '',
-        "Industry": contactData?.properties?.industry || '',
-        "State/Region": contactData?.properties?.state || '',
-        "City": contactData?.properties?.city || '',
-        "Email": contactData?.properties?.email || '',
-        "Bio": contactData?.properties?.bio || '',
-        "LinkedIn": contactData?.properties?.linkedin || '',
-        "Headshot": contactData?.properties?.headshot || '',
-        "Email Domain": null,
-        "Membership": contactData?.properties?.membership || '',
-        "active": isActive
-      };
-
-      console.log(`Upserting profile for ${memberId}:`, profile);
-
-      const { error } = await supabase
-        .from('profiles')
-        .upsert(profile, {
-          onConflict: 'record_id'
-        });
-
-      if (error) {
-        console.error(`Error upserting profile ${memberId}:`, error);
-        throw error;
-      }
-
-      console.log(`Successfully processed contact ${memberId}`);
     }
 
     return new Response(
       JSON.stringify({
         success: true,
-        summary: {
-          processed: memberIds.length
-        }
+        summary: processedSummary
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
