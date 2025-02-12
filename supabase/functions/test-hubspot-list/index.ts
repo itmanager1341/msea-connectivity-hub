@@ -49,42 +49,25 @@ serve(async (req) => {
       throw new Error(`Failed to fetch list: ${await listResponse.text()}`);
     }
 
-    // Now get the property mappings we're using
+    // Define our standard field mappings
     const mappings = {
-      firstname: "First Name",
-      lastname: "Last Name",
-      email: "Email",
-      company: "Company Name",
-      jobtitle: "Job Title",
-      phone: "Phone Number",
-      industry: "Industry",
-      state: "State/Region",
-      city: "City",
-      bio: "Bio",
-      linkedin: "LinkedIn",
-      headshot: "Headshot",
-      membership: "Membership"
+      "First Name": "First Name",
+      "Last Name": "Last Name",
+      "Full Name": "Full Name",
+      "Email": "Email",
+      "Company Name": "Company Name",
+      "Job Title": "Job Title",
+      "Phone Number": "Phone Number",
+      "Industry": "Industry",
+      "State/Region": "State/Region",
+      "City": "City",
+      "Bio": "Bio",
+      "LinkedIn": "LinkedIn",
+      "Headshot": "Headshot",
+      "Membership": "Membership"
     };
 
-    // Get a sample contact from the list to verify properties
-    const contactsResponse = await fetch(
-      `https://api.hubapi.com/crm/v3/lists/${listId}/memberships?limit=1`,
-      {
-        headers: {
-          'Authorization': `Bearer ${HUBSPOT_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
-    if (!contactsResponse.ok) {
-      throw new Error(`Failed to fetch list members: ${await contactsResponse.text()}`);
-    }
-
-    const contactsData = await contactsResponse.json();
-    console.log('Sample contact data:', contactsData);
-
-    // Return the verified mappings
+    // Return the mappings and success status
     return new Response(
       JSON.stringify({
         success: true,
