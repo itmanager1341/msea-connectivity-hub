@@ -37,7 +37,7 @@ export const HubSpotSettings = () => {
       const { data, error } = await supabase
         .from("hubspot_settings")
         .select("*")
-        .single();
+        .maybeSingle(); // Changed from single() to maybeSingle()
 
       if (error) throw error;
       return data;
@@ -52,6 +52,7 @@ export const HubSpotSettings = () => {
         .upsert({
           active_list_id: data.active_list_id,
           field_mappings: fieldMappings,
+          created_by: (await supabase.auth.getUser()).data.user?.id, // Add created_by when creating new settings
         });
 
       if (error) throw error;
@@ -91,6 +92,11 @@ export const HubSpotSettings = () => {
       }
 
       const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.error || "Failed to test HubSpot connection");
+      }
+      
       setFieldMappings(data.properties);
 
       toast({
@@ -100,7 +106,7 @@ export const HubSpotSettings = () => {
     } catch (error) {
       toast({
         title: "Connection failed",
-        description: error.message,
+        description: error instanceof Error ? error.message : "An unknown error occurred",
         variant: "destructive",
       });
     } finally {
@@ -180,15 +186,15 @@ export const HubSpotSettings = () => {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b bg-muted/50">
-                      <th className="text-left p-3">HubSpot Field</th>
                       <th className="text-left p-3">Database Field</th>
+                      <th className="text-left p-3">HubSpot Field</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {Object.entries(fieldMappings).map(([hubspotField, dbField]) => (
-                      <tr key={hubspotField} className="border-b">
-                        <td className="p-3">{hubspotField}</td>
+                    {Object.entries(fieldMappings).map(([dbField, hubspotField]) => (
+                      <tr key={dbField} className="border-b">
                         <td className="p-3">{dbField}</td>
+                        <td className="p-3">{hubspotField}</td>
                       </tr>
                     ))}
                     {Object.keys(fieldMappings).length === 0 && (
