@@ -48,6 +48,10 @@ interface SyncPreferences {
   updated_at: string;
 }
 
+interface HubspotSettings {
+  active_list_id: string | null;
+}
+
 type SortableField = "Full Name" | "Company Name" | "Email" | "Phone Number" | "Membership" | "active";
 
 type SortConfig = {
@@ -81,6 +85,24 @@ const MemberManagementPage = () => {
       }
       console.log('Sync preferences:', data);
       return data as SyncPreferences;
+    }
+  });
+
+  const { data: hubspotSettings } = useQuery({
+    queryKey: ['hubspot-settings'],
+    queryFn: async () => {
+      console.log('Fetching HubSpot settings...');
+      const { data, error } = await supabase
+        .from('hubspot_settings')
+        .select('*')
+        .maybeSingle();
+      
+      if (error) {
+        console.error('Error fetching HubSpot settings:', error);
+        throw error;
+      }
+      console.log('HubSpot settings:', data);
+      return data;
     }
   });
 
@@ -118,6 +140,10 @@ const MemberManagementPage = () => {
   const handleSync = async () => {
     setIsSyncing(true);
     try {
+      if (!hubspotSettings?.active_list_id) {
+        throw new Error('HubSpot list ID is not configured. Please set it in the Admin > Settings page first.');
+      }
+
       const response = await supabase.functions.invoke('sync-hubspot', {
         body: { 
           memberIds: selectedMembers.length > 0 ? selectedMembers : undefined,
@@ -132,7 +158,7 @@ const MemberManagementPage = () => {
       const summary = response.data.summary;
       toast({
         title: "Sync Completed Successfully",
-        description: `Updated ${summary.updated} records, added ${summary.inserted} new records, and marked ${summary.deactivated} records as inactive.`,
+        description: `Updated ${summary.updated} records, added ${summary.inserted || 0} new records, and marked ${summary.deactivated} records as inactive.`,
       });
 
       setSelectedMembers([]);
