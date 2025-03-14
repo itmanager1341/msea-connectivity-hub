@@ -98,7 +98,7 @@ serve(async (req) => {
     console.log('Fetching HubSpot settings...')
     const { data: hubspotSettings, error: settingsError } = await supabase
       .from('hubspot_settings')
-      .select('active_list_id')
+      .select('active_list_id, field_mappings')
       .single()
 
     if (settingsError) {
@@ -295,12 +295,20 @@ serve(async (req) => {
       // Future implementation for two-way sync
     }
 
-    // Update the last sync timestamp
+    // Update the last sync timestamp and update list ID if needed
+    const now = new Date().toISOString();
+    await supabase
+      .from('hubspot_settings')
+      .upsert({
+        active_list_id: activeListId,
+        last_sync_at: now
+      }, { onConflict: 'id' });
+    
     await supabase
       .from('sync_preferences')
       .upsert({
         id: 1, 
-        last_sync_timestamp: new Date().toISOString()
+        last_sync_timestamp: now
       }, { onConflict: 'id' });
 
     return new Response(

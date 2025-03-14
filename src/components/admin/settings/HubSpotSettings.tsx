@@ -31,7 +31,7 @@ export const HubSpotSettings = () => {
   });
 
   // Fetch existing settings
-  const { data: settings, isLoading } = useQuery({
+  const { data: settings, isLoading, refetch } = useQuery({
     queryKey: ["hubspot-settings"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -46,7 +46,7 @@ export const HubSpotSettings = () => {
 
   // Update settings mutation
   const updateSettings = useMutation({
-    mutationFn: async (data: HubspotSettingsFormData) => {
+    mutationFn: async (data: HubspotSettingsFormData & { field_mappings?: Record<string, string> }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("No authenticated user found");
 
@@ -54,11 +54,14 @@ export const HubSpotSettings = () => {
         .from("hubspot_settings")
         .upsert({
           active_list_id: data.active_list_id,
-          field_mappings: fieldMappings,
+          field_mappings: data.field_mappings || fieldMappings,
           created_by: user.id,
         });
 
       if (error) throw error;
+      
+      // Refetch the settings after update
+      await refetch();
     },
     onSuccess: () => {
       toast({
@@ -80,33 +83,59 @@ export const HubSpotSettings = () => {
     setIsTestingConnection(true);
     try {
       const listId = form.getValues("active_list_id");
+      
+      if (!listId) {
+        throw new Error("Please enter a list ID");
+      }
+      
+      const { data: session } = await supabase.auth.getSession();
+      
+      console.log("Testing connection with list ID:", listId);
+      console.log("Auth token available:", !!session?.session?.access_token);
+      
       const response = await fetch(
         `/api/functions/v1/test-hubspot-list?listId=${listId}`,
         {
           method: "GET",
           headers: {
-            Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+            Authorization: `Bearer ${session?.session?.access_token}`,
           },
         }
       );
 
-      if (!response.ok) {
-        throw new Error("Failed to connect to HubSpot");
+      console.log("Response status:", response.status);
+      console.log("Response headers:", Object.fromEntries(response.headers.entries()));
+      
+      const responseText = await response.text();
+      console.log("Raw response body:", responseText);
+      
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {
+        console.error("Failed to parse response as JSON:", e);
+        throw new Error(`Invalid response from server: ${responseText.substring(0, 100)}...`);
       }
-
-      const data = await response.json();
       
       if (!data.success) {
         throw new Error(data.error || "Failed to test HubSpot connection");
       }
       
-      setFieldMappings(data.properties);
+      console.log("Connection test successful:", data);
+      setFieldMappings(data.properties || {});
+
+      // Save the settings immediately after successful test
+      await updateSettings.mutateAsync({ 
+        active_list_id: listId, 
+        field_mappings: data.properties 
+      });
 
       toast({
         title: "Connection successful",
-        description: "Successfully connected to HubSpot list.",
+        description: `Successfully connected to HubSpot list "${data.listName || listId}".`,
       });
     } catch (error) {
+      console.error("Connection test error:", error);
       toast({
         title: "Connection failed",
         description: error instanceof Error ? error.message : "An unknown error occurred",
@@ -120,18 +149,18 @@ export const HubSpotSettings = () => {
   useEffect(() => {
     if (settings) {
       form.reset({
-        active_list_id: settings.active_list_id,
+        active_list_id: settings.active_list_id || "",
       });
       setFieldMappings(settings.field_mappings || {});
     }
-  }, [settings]);
+  }, [settings, form]);
 
   const onSubmit = (data: HubspotSettingsFormData) => {
-    updateSettings.mutate(data);
+    updateSettings.mutate({ ...data, field_mappings: fieldMappings });
   };
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return <div className="flex items-center justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 
   return (
@@ -159,7 +188,7 @@ export const HubSpotSettings = () => {
                           type="button"
                           variant="outline"
                           onClick={testConnection}
-                          disabled={isTestingConnection}
+                          disabled={isTestingConnection || !field.value}
                         >
                           {isTestingConnection && (
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />

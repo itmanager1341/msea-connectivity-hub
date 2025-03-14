@@ -8,6 +8,7 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -59,26 +60,17 @@ serve(async (req) => {
     );
 
     console.log('List response status:', listResponse.status);
-    console.log('List response headers:', Object.fromEntries(listResponse.headers.entries()));
     
-    const responseText = await listResponse.text();
-    console.log('Raw response body:', responseText);
-
     if (!listResponse.ok) {
       if (listResponse.status === 404) {
         throw new Error(`List ID ${listId} not found in HubSpot`);
       }
-      throw new Error(`HubSpot API error: ${responseText}`);
+      const errorText = await listResponse.text();
+      console.error('List test failed:', errorText);
+      throw new Error(`HubSpot API error: ${errorText}`);
     }
 
-    let listData;
-    try {
-      listData = JSON.parse(responseText);
-    } catch (e) {
-      console.error('Failed to parse response as JSON:', e);
-      throw new Error(`Invalid JSON response from HubSpot API: ${responseText.substring(0, 100)}...`);
-    }
-
+    const listData = await listResponse.json();
     console.log('List details:', listData);
 
     // Extract the filters to understand what properties are being used
@@ -86,7 +78,7 @@ serve(async (req) => {
     console.log('List filters:', filters);
 
     // Map the properties used in the list to our Supabase columns
-    const fieldMappings: Record<string, string> = {};
+    const fieldMappings = {};
     const supabaseColumns = [
       "First Name",
       "Last Name",
