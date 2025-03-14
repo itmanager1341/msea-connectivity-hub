@@ -1,7 +1,9 @@
+
 import { Users } from "lucide-react";
 import { NavigationMenu, NavigationMenuItem, NavigationMenuLink, NavigationMenuList, navigationMenuTriggerStyle } from "@/components/ui/navigation-menu";
 import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
+import Auth from "./Auth";
 
 const Leadership = () => {
   const leadershipTeam = [
@@ -63,6 +65,7 @@ const Leadership = () => {
               </NavigationMenuList>
             </NavigationMenu>
           </div>
+          <Auth />
         </div>
       </header>
 

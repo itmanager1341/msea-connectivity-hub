@@ -1,8 +1,10 @@
+
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Users, Building2, BookOpen, LogIn } from "lucide-react";
+import { Users, Building2, BookOpen } from "lucide-react";
 import { NavigationMenu, NavigationMenuItem, NavigationMenuLink, NavigationMenuList, navigationMenuTriggerStyle } from "@/components/ui/navigation-menu";
 import { Link } from "react-router-dom";
+import Auth from "./Auth";
 
 const About = () => {
   return (
@@ -30,17 +32,14 @@ const About = () => {
                   </Link>
                 </NavigationMenuItem>
                 <NavigationMenuItem>
-                  <Link to="/resources" className={navigationMenuTriggerStyle()}>
-                    Resources
+                  <Link to="/leadership" className={navigationMenuTriggerStyle()}>
+                    Leadership
                   </Link>
                 </NavigationMenuItem>
               </NavigationMenuList>
             </NavigationMenu>
           </div>
-          <Button variant="outline" className="flex items-center gap-2">
-            <LogIn className="w-4 h-4" />
-            Member Login
-          </Button>
+          <Auth />
         </div>
       </header>
 
